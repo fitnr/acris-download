@@ -52,12 +52,15 @@ mysql-%: %.csv %.sql | create
 # Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
 #
 %.sql: %.csv
-	{ head -n1 $< | perl -pe 's/([A-Z])/\l\1/g' | sed -e 's/[\.\/ ]//g' -e 's/%/perc/g' ; \
+	{ head -n1 $< | perl -pe 's/([A-Z])/\l\1/g' | sed -e 's/[\.\/ ]//g' -e 's/%/perc/g' -e 's/\#/nbr/g' ; \
 	tail -n+2 $< | head -n 4096 ; } | \
 	csvsql -i mysql --tables $* > $@
 
+# replace MM/DD/YYYY with YYYY-MM-DD
+#
 %.csv:
-	curl -o $@ https://data.cityofnewyork.us/api/views/$($*)/rows.csv?accessType=DOWNLOAD
+	curl --compressed https://data.cityofnewyork.us/api/views/$($*)/rows.csv?accessType=DOWNLOAD | \
+	sed -e 's/,\([0-9]\{2\}\)\/\([0-9]\{2\}\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' > $@
 
 create: ; $(MYSQL) --execute "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
