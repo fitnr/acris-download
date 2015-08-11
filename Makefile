@@ -69,4 +69,4 @@ create: ; $(MYSQL) --execute "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
 clean: ; $(MYSQL) --execute "DROP DATABASE IF EXISTS $(DATABASE)"
 
-install: ; pip install csvkit
+install: ; pip install $(INSTALLFLAGS) csvkit
