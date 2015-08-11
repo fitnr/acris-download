@@ -60,10 +60,14 @@ mysql-%: %.csv %.sql | create
 	csvsql -i mysql --tables $* > $@
 
 # replace MM/DD/YYYY with YYYY-MM-DD
-#
-%.csv:
-	curl --compressed https://data.cityofnewyork.us/api/views/$($*)/rows.csv?accessType=DOWNLOAD | \
-	sed -e 's/,\([0-9]\{2\}\)\/\([0-9]\{2\}\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' > $@
+# Dedupe files using sort because uniq seems to choke on 1GB+ files
+%.csv: %.raw
+	sort --unique --reverse $< | \
+	sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' > $@
+
+.INTERMEDIATE: %.raw
+%.raw:
+	curl --compressed -o $@ https://data.cityofnewyork.us/api/views/$($*)/rows.csv?accessType=DOWNLOAD
 
 create: ; $(MYSQL) --execute "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
