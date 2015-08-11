@@ -7,9 +7,11 @@ It's designed for people who know how to use MySQL, but don't necessarily want t
 
 The Department of Finance supposedly updates the online records regularly, you might use this Makefile, along with a cron job, to regularly update a mirror of their database.
 
-If you want to use another database, you already probably know enough to edit the Makefile.
+If you want to use other database software, you already probably know enough to customize the Makefile. It shouldn't be harder than changing a few flags.
 
 ## Requirements
+
+At least 10 GB of free disk space for the data and:
 
 * [csvkit](http://csvkit.readthedocs.org)
 * MySQL
@@ -33,29 +35,46 @@ $ make install
 If that doesn't work, try one of these or follow the instructions in the [csvkit docs](http://csvkit.readthedocs.org):
 
 ```
-$ sudo make install
+$ sudo make install # If you have admin privileges
 $ make install INSTALLFLAGS=--user
 ```
 
 ## Downloading the data
 
-Check that you have mysql up and running on your machine, and a user capable of creating databases.
+Check that you have mysql up and running on your machine, and a user capable of creating databases. Don't use root!
 
 Run the following command:
 
 ````
-make USER=mysqluser PASS=mysqlpass
+$ make USER=mysqluser PASS=mysqlpass
 ````
 
-This will download the ACRIS database (it will be slow), and then import it into SQL.
+(If you don't want to type your password in plaintext, you can leave off the PASS argument. You'll just have to enter your MySQL password a many times.)
 
-By default, only the master list of transactions and the parties files will be downloaded. To download the the remarks, references and legal tables, use:
+This will run the following tasks:
+* download the ACRIS real property datasets in CSV format (it will be slow)
+* dedupe the CSVs and reformat them slightly
+* generate schemas for the new MySQL tables
+* import the data into MySQL
+* Add an index to the `documentid` field in the main data tables
+
+If the downloads are interrupted, delete any partially downloaded files and run the command again. That's the power of make!
+
+By default, only the real property datasets will be downloaded. To download and create tables for the personal property datasets:
 
 ```
-make more USER=mysqluser PASS=mysqlpass
+$ make personal USER=mysqluser PASS=mysqlpass
 ```
-Read on for the distinction between real and personal property datasets.
 
+To only download the data without loading it into MySQL:
+
+````
+$ make download
+````
+
+## Known issues
+
+There's a bug in how csvkit <=0.9.1 handles fields that contain only the letter 'A' - they're converted into dates. This will break the recordtype column in certain tables.
 
 ## ACRIS Datasets
 
