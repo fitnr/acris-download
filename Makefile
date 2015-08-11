@@ -28,22 +28,47 @@ PERSONAL = personal_property_legals \
 		   personal_property_master \
 		   personal_property_parties \
 
-MORE = real_property_references \
-	   real_property_remarks \
-	   personal_property_references \
-	   personal_property_remarks
+REFERENCES = personal_property_references real_property_references
+
+REMARKS = personal_property_remarks real_property_remarks
+
+IDX_document_control_codes = doctype
+IDX_country_codes          = countrycode
+IDX_property_type_codes    = propertytype
+IDX_ucc_collateral_codes   = ucccolleralcode
+
+IDX_documentid = personal_property_legals \
+	personal_property_master \
+	personal_property_parties \
+	real_property_legals \
+	real_property_master \
+	real_property_parties \
+	real_property_remarks \
+	personal_property_remarks
 
 DATABASE = acris
 PASS = 
 MYSQL = mysql --user='$(USER)' -p$(PASS)
 
-.PHONY: all create clean install mysql-%
+.PHONY: all real personal more create clean install download index-% mysql-%
 
-all: $(foreach a,$(TABLES),mysql-$a)
+all: real
 
-personal: $(foreach a,$(PERSONAL),mysql-$a)
+real: $(foreach a,$(TABLES),index-$a)
 
-more: $(foreach a,$(MORE),mysql-$a)
+personal: $(foreach a,$(PERSONAL),index-$a)
+
+references: $(foreach a,$(REFERENCES),index-$a)
+
+remarks: $(foreach a,$(REMARKS),index-$a)
+
+download: $(foreach a,$(TABLES),$a.csv)
+
+index-country_codes index-document_control_codes index-property_type_codes index-ucc_collateral_codes: index-%: mysql-%
+	$(MYSQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_idx $(IDX_$*)"
+
+$(addprefix index-,$(IDX_documentid)): index-%: mysql-%
+	$(MYSQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_did (documentid)"
 
 mysql-%: %.csv %.sql | create
 	$(MYSQL) --execute "DROP TABLE IF EXISTS $(DATABASE).$*;"
