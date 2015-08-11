@@ -48,7 +48,7 @@ IDX_documentid = personal_property_legals \
 
 DATABASE = acris
 PASS = 
-MYSQL = mysql --user='$(USER)' -p$(PASS)
+SQL = mysql --user='$(USER)' -p$(PASS)
 
 .PHONY: all real personal more create clean install download index-% mysql-%
 
@@ -65,16 +65,16 @@ remarks: $(foreach a,$(REMARKS),index-$a)
 download: $(foreach a,$(TABLES),$a.csv)
 
 index-country_codes index-document_control_codes index-property_type_codes index-ucc_collateral_codes: index-%: mysql-%
-	$(MYSQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_idx $(IDX_$*)"
+	$(SQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_idx $(IDX_$*)"
 
 $(addprefix index-,$(IDX_documentid)): index-%: mysql-%
-	$(MYSQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_did (documentid)"
+	$(SQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_did (documentid)"
 
 mysql-%: %.csv %.sql | create
-	$(MYSQL) --execute "DROP TABLE IF EXISTS $(DATABASE).$*;"
-	$(MYSQL) --database $(DATABASE) < $*.sql
+	$(SQL) --execute "DROP TABLE IF EXISTS $(DATABASE).$*;"
+	$(SQL) --database $(DATABASE) < $*.sql
 
-	$(MYSQL) --execute "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
+	$(SQL) --execute "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
 	FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' IGNORE 1 LINES"
 
 # Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
@@ -94,9 +94,9 @@ mysql-%: %.csv %.sql | create
 %.raw:
 	curl --compressed -o $@ https://data.cityofnewyork.us/api/views/$($*)/rows.csv?accessType=DOWNLOAD
 
-create: ; $(MYSQL) --execute "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
+create: ; $(SQL) --execute "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
-clean: ; $(MYSQL) --execute "DROP DATABASE IF EXISTS $(DATABASE)"
+clean: ; $(SQL) --execute "DROP DATABASE IF EXISTS $(DATABASE)"
 
 install: requirements.txt
 	pip install $(INSTALLFLAGS) --requirement=$<
