@@ -19,13 +19,14 @@ ucc_collateral_codes   = q9kp-jvxv
 TABLES = real_property_legals \
 		 real_property_master \
 		 real_property_parties \
-		 personal_property_legals \
-		 personal_property_master \
-		 personal_property_parties \
 		 country_codes \
 		 document_control_codes \
 		 property_type_codes \
 		 ucc_collateral_codes
+
+PERSONAL = personal_property_legals \
+		   personal_property_master \
+		   personal_property_parties \
 
 MORE = real_property_references \
 	   real_property_remarks \
@@ -39,6 +40,8 @@ MYSQL = mysql --user='$(USER)' -p$(PASS)
 .PHONY: all create clean install mysql-%
 
 all: $(foreach a,$(TABLES),mysql-$a)
+
+personal: $(foreach a,$(PERSONAL),mysql-$a)
 
 more: $(foreach a,$(MORE),mysql-$a)
 
