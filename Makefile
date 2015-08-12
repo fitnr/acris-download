@@ -66,8 +66,7 @@ IDX_real_property_parties = documentid
 IDX_real_property_remarks = documentid
 
 DATABASE = acris
-PASS = 
-SQL = mysql --user='$(USER)' -p$(PASS)
+SQL = mysql --user='$(USER)' -p$(PASS) $(SQLFLAGS)
 
 f = data
 

@@ -31,7 +31,7 @@ Run the following command:
 $ make USER=myuser PASS=mypass
 ````
 
-(If you don't want to type your password in plaintext, you can leave off the PASS argument. You'll just have to enter your MySQL password a many times.)
+(If you don't want to type your password in plaintext, you can leave off the PASS argument. You'll just have to enter your password many times.)
 
 This will run the following tasks:
 * download the ACRIS real property datasets in CSV format (it will be slow)
@@ -63,6 +63,11 @@ $ make personal_complete USER=mysqluser PASS=mysqlpass
 If you want to add the data to tables in an existing database, run:
 ````
 $ make DATABASE=mydb USER=myuser PASS=mypass
+````
+
+If you have other connection requirements:
+````
+$ make DATABASE=mydb USER=myuser PASS=mypass SQLFLAGS="--host=example.com --port=123"
 ````
 
 ## Known issues
