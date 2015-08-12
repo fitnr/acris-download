@@ -100,7 +100,9 @@ $f: ; mkdir -p $@
 
 create: ; $(SQL) --execute "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
-clean: ; $(SQL) --execute "DROP DATABASE IF EXISTS $(DATABASE)"
+clean:
+	$(SQL) --execute "DROP DATABASE IF EXISTS $(DATABASE)"
+	rm -rf data
 
 install: requirements.txt
 	pip install $(INSTALLFLAGS) --requirement=$<
