@@ -66,10 +66,17 @@ By default, only the real property datasets will be downloaded. To download and 
 $ make personal USER=mysqluser PASS=mysqlpass
 ```
 
-To only download the data without loading it into MySQL:
+To only download the real property data without loading it into MySQL:
 
 ````
 $ make download
+````
+
+The ACRIS dataset also includes voluminous cross-reference and remarks files that aren't downloaded by default. To download them and load into MySQL:
+
+````
+$ make real_complete USER=mysqluser PASS=mysqlpass
+$ make personal_complete USER=mysqluser PASS=mysqlpass
 ````
 
 ## Known issues

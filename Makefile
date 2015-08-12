@@ -16,21 +16,22 @@ document_control_codes = 7isb-wh4c
 property_type_codes    = 94g4-w6xz
 ucc_collateral_codes   = q9kp-jvxv
 
-TABLES = real_property_legals \
-		 real_property_master \
-		 real_property_parties \
-		 country_codes \
-		 document_control_codes \
-		 property_type_codes \
-		 ucc_collateral_codes
+PERSONAL_BASIC = personal_property_legals \
+	personal_property_master \
+	personal_property_parties \
 
-PERSONAL = personal_property_legals \
-		   personal_property_master \
-		   personal_property_parties \
+REAL_BASIC = real_property_legals \
+	real_property_master \
+	real_property_parties
 
-REFERENCES = personal_property_references real_property_references
+PERSONAL_REF = personal_property_references personal_property_remarks
 
-REMARKS = personal_property_remarks real_property_remarks
+REAL_REF = real_property_references real_property_remarks
+
+EXTRAS = country_codes \
+	document_control_codes \
+	property_type_codes \
+	ucc_collateral_codes
 
 IDX_document_control_codes = doctype
 IDX_country_codes          = countrycode
@@ -53,19 +54,17 @@ SQL = mysql --user='$(USER)' -p$(PASS)
 
 f = data
 
-.PHONY: all real personal more create clean install download
+.PHONY: all real_property personal_property create clean install download
 
-all: real
+all: $(foreach a,$(REAL_BASIC) $(EXTRAS),$f/$a.mysql)
 
-real: $(foreach a,$(TABLES),$f/$a.mysql)
+real_complete: all $(foreach a,$(REAL_REF),$f/$a.mysql)
 
-personal: $(foreach a,$(PERSONAL),$f/$a.mysql)
+personal: $(foreach a,$(PERSONAL_BASIC) $(EXTRAS),$f/$a.mysql)
 
-references: $(foreach a,$(REFERENCES),$f/$a.mysql)
+personal_complete: personal $(foreach a,$(PERSONAL_REF),$f/$a.mysql)
 
-remarks: $(foreach a,$(REMARKS),$f/$a.mysql)
-
-download: $(foreach a,$(TABLES),$f/$a.csv)
+download: $(foreach a,$(REAL_BASIC) $(EXTRAS),$f/$a.csv)
 
 $f/%.mysql: $f/%.csv $f/%.sql | create
 	$(SQL) --execute "DROP TABLE IF EXISTS $(DATABASE).$*;"
