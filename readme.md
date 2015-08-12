@@ -129,3 +129,7 @@ $ sudo make install
 # If you don't have admin privileges. Might not work.
 $ make install INSTALLFLAGS=--user
 ```
+
+## License
+
+[General Public License version 3](https://www.gnu.org/licenses/gpl.html)
