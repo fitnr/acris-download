@@ -35,7 +35,7 @@ REMARKS = personal_property_remarks real_property_remarks
 IDX_document_control_codes = doctype
 IDX_country_codes          = countrycode
 IDX_property_type_codes    = propertytype
-IDX_ucc_collateral_codes   = ucccolleralcode
+IDX_ucc_collateral_codes   = ucccollateralcode
 
 IDX_personal_property_legals  = documentid
 IDX_personal_property_master  = documentid
