@@ -16,37 +16,19 @@ At least 10 GB of free disk space for the data and:
 * [csvkit](http://csvkit.readthedocs.org)
 * MySQL
 
-## Installing
+## Installation
 
-(If you don't have MySQL installed, [start here](https://dev.mysql.com/doc/refman/5.5/en/osx-installation.html))
+Download this repository and open the folder in your terminal.
 
-Download this repository and open the folder in your terminal. Check that you have csvkit installed by typing:
-
-````
-$ which csvsql
-````
-
-If the result is blank, install csvkit:
-
-````
-$ make install
-````
-
-If that doesn't work, try one of these or follow the instructions in the [csvkit docs](http://csvkit.readthedocs.org):
-
-```
-$ sudo make install # If you have admin privileges
-$ make install INSTALLFLAGS=--user
-```
+See below for more detailed installation instructions.
 
 ## Downloading the data
 
 Check that you have mysql up and running on your machine, and a user capable of creating databases. Don't use root!
 
 Run the following command:
-
 ````
-$ make USER=mysqluser PASS=mysqlpass
+$ make USER=myuser PASS=mypass
 ````
 
 (If you don't want to type your password in plaintext, you can leave off the PASS argument. You'll just have to enter your MySQL password a many times.)
@@ -55,28 +37,32 @@ This will run the following tasks:
 * download the ACRIS real property datasets in CSV format (it will be slow)
 * dedupe the CSVs and reformat them slightly
 * generate schemas for the new MySQL tables
-* import the data into MySQL
-* Add an index to the `documentid` field in the main data tables
+* Create a new MySQL database (`acris`) and import the data into several tables
+* Add indices to sensible fields in each table. You may find it profitable to add more indices yourself.
 
-If the downloads are interrupted, delete any partially downloaded files and run the command again. That's the power of make!
+If the downloads are interrupted, just run the command again. That's the power of make!
 
 By default, only the real property datasets will be downloaded. To download and create tables for the personal property datasets:
-
 ```
-$ make personal USER=mysqluser PASS=mysqlpass
+$ make personal USER=myuser PASS=mypass
 ```
 
 To only download the real property data without loading it into MySQL:
-
 ````
 $ make download
 ````
 
 The ACRIS dataset also includes voluminous cross-reference and remarks files that aren't downloaded by default. To download them and load into MySQL:
-
 ````
 $ make real_complete USER=mysqluser PASS=mysqlpass
 $ make personal_complete USER=mysqluser PASS=mysqlpass
+````
+
+### Using an existing database
+
+If you want to add the data to tables in an existing database, run:
+````
+$ make DATABASE=mydb USER=myuser PASS=mypass
 ````
 
 ## Known issues
@@ -106,53 +92,40 @@ property dataset with the same “Document ID” as the selected master record. 
 
 ### Real property records
 
-Master record            [ACRIS - Real Property Master](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-Master/bnx9-e6tj)
-Document Details for Real Property Related Documents Recorded in ACRIS
-
-Lot(property) record     [ACRIS - Real Property Legals](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-Legals/8h5j-fqxa)
-Property Details for Real Property Related Documents Recorded in ACRIS
-
-Party record             [ACRIS - Real Property Parties](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-Parties/636b-3b5g)
-Party Names for Real Property Related Documents Recorded in ACRIS
-
-Cross-reference record   [ACRIS - Real Property References](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-References/pwkr-dpni)
-Document Cross References for Real Property Related Documents Recorded in ACRIS
-
-Remarks record           [ACRIS - Real Property Remarks](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-Remarks/9p4w-7npp)
-Document Remarks for Real Property Related Documents Recorded in ACRIS
+- [Real Property Master](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-Master/bnx9-e6tj) (document details)
+- [Real Property Legals](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-Legals/8h5j-fqxa) (property details)
+- [Real Property Parties](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-Parties/636b-3b5g)  (party names and addresses)
+- [Real Property References](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-References/pwkr-dpni)
+- [Real Property Remarks](http://data.cityofnewyork.us/City-Government/ACRIS-Real-Property-Remarks/9p4w-7npp)
 
 ### Personal property records
 
-Master record            [ACRIS - Personal Property Master](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-Master/sv7x-dduq)
-Document Details for Personal Property Related Documents Recorded in ACRIS
-
-Lot(property) record     [ACRIS - Personal Property Legals](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-Legals/uqqa-hym2)
-Property Details for Personal Property Related Documents Recorded in ACRIS
-
-Party record             [ACRIS - Personal Property Parties](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-Parties/nbbg-wtuz)
-Party Names for Personal Property Related Documents Recorded in ACRIS
-
-Cross-reference record   [ACRIS - Personal Property References](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-References/6y3e-jcrc)
-Document Cross References for Personal Property Related Documents Recorded in ACRIS
-
-Remarks record           [ACRIS - Personal Property Remarks](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-Remarks/fuzi-5ks9)
-Document Remarks for Personal Property Related Documents Recorded in ACRIS
+- [Personal Property Master](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-Master/sv7x-dduq) (document details)
+- [Personal Property Legals](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-Legals/uqqa-hym2) (property details)
+- [Personal Property Parties](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-Parties/nbbg-wtuz) (party names and addresses)
+- [Personal Property References](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-References/6y3e-jcrc)
+- [Personal Property Remarks](http://data.cityofnewyork.us/City-Government/ACRIS-Personal-Property-Remarks/fuzi-5ks9)
 
 ### Code mappings
 
-In ACRIS, documents are stored with codes representing longer descriptions that are displayed on images generated by ACRIS and in Document Search. The translation from these codes is done via the following code datasets:
+In ACRIS, documents are stored with codes representing longer descriptions that are displayed on images generated by ACRIS and in Document Search. The translation from these codes is done via the following code look up tables:
 
-[ACRIS - Document Control Codes](http://data.cityofnewyork.us/City-Government/ACRIS-Document-Control-Codes/7isb-wh4c)
-ACRIS Document Type and Class Code mappings for Codes in the ACRIS Real and Personal Property Master Datasets
+- [Document Control Codes](http://data.cityofnewyork.us/City-Government/ACRIS-Document-Control-Codes/7isb-wh4c) - codes in the real and personal property master datasets
+- [UCC Collateral Codes](http://data.cityofnewyork.us/City-Government/ACRIS-Country-Codes/j2iz-mwzu) - codes in the personal property master dataset
+- [Property Types Codes](http://data.cityofnewyork.us/City-Government/ACRIS-Property-Types-Codes/94g4-w6xz) - codes in the personal and real property legals datasets
+- [States Codes](http://data.cityofnewyork.us/City-Government/ACRIS-States-Codes/5c9e-33xj) - codes in the real and personal parties property datasets
+- [Country Codes](http://data.cityofnewyork.us/City-Government/ACRIS-UCC-Collateral-Codes/q9kp-jvxv) - codes in the real and personal parties property datasets
 
-[ACRIS - UCC Collateral Codes](http://data.cityofnewyork.us/City-Government/ACRIS-Country-Codes/j2iz-mwzu)
-ACRIS Collateral Type mapping for Codes in the ACRIS Personal Property Master Dataset
+## Installing Prerequisites
 
-[ACRIS - Property Types Codes](http://data.cityofnewyork.us/City-Government/ACRIS-Property-Types-Codes/94g4-w6xz)
-ACRIS State mapping for Codes in the ACRIS Real and Personal Property Legals Datasets
+If you don't have MySQL installed, [start here](https://dev.mysql.com/doc/refman/5.5/en/osx-installation.html).
 
-[ACRIS - States Codes](http://data.cityofnewyork.us/City-Government/ACRIS-States-Codes/5c9e-33xj)
-ACRIS State mapping for Codes in the ACRIS Real and Personal Parties Property Datasets
+To install csvkit, follow the instructions in the [csvkit docs](http://csvkit.readthedocs.org), or try one of these:
 
-[ACRIS - Country Codes](http://data.cityofnewyork.us/City-Government/ACRIS-UCC-Collateral-Codes/q9kp-jvxv)
-ACRIS Countries mapping for Codes in the ACRIS Real and Personal Parties Property Datasets
+```
+# If you have admin privileges
+$ sudo make install
+
+# If you don't have admin privileges. Might not work.
+$ make install INSTALLFLAGS=--user
+```
