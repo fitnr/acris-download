@@ -1,3 +1,4 @@
 *.csv
 *.sql
 *.raw
+*.mysql

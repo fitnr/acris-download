@@ -37,62 +37,66 @@ IDX_country_codes          = countrycode
 IDX_property_type_codes    = propertytype
 IDX_ucc_collateral_codes   = ucccolleralcode
 
-IDX_documentid = personal_property_legals \
-	personal_property_master \
-	personal_property_parties \
-	real_property_legals \
-	real_property_master \
-	real_property_parties \
-	real_property_remarks \
-	personal_property_remarks
+IDX_personal_property_legals  = documentid
+IDX_personal_property_master  = documentid
+IDX_personal_property_parties = documentid
+IDX_personal_property_remarks = documentid
+
+IDX_real_property_legals  = documentid
+IDX_real_property_master  = documentid
+IDX_real_property_parties = documentid
+IDX_real_property_remarks = documentid
 
 DATABASE = acris
 PASS = 
 SQL = mysql --user='$(USER)' -p$(PASS)
 
-.PHONY: all real personal more create clean install download index-% mysql-%
+f = data
+
+.PHONY: all real personal more create clean install download
 
 all: real
 
-real: $(foreach a,$(TABLES),index-$a)
+real: $(foreach a,$(TABLES),$f/$a.mysql)
 
-personal: $(foreach a,$(PERSONAL),index-$a)
+personal: $(foreach a,$(PERSONAL),$f/$a.mysql)
 
-references: $(foreach a,$(REFERENCES),index-$a)
+references: $(foreach a,$(REFERENCES),$f/$a.mysql)
 
-remarks: $(foreach a,$(REMARKS),index-$a)
+remarks: $(foreach a,$(REMARKS),$f/$a.mysql)
 
-download: $(foreach a,$(TABLES),$a.csv)
+download: $(foreach a,$(TABLES),$f/$a.csv)
 
-index-country_codes index-document_control_codes index-property_type_codes index-ucc_collateral_codes: index-%: mysql-%
-	$(SQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_idx $(IDX_$*)"
-
-$(addprefix index-,$(IDX_documentid)): index-%: mysql-%
-	$(SQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_did (documentid)"
-
-mysql-%: %.csv %.sql | create
+$f/%.mysql: $f/%.csv $f/%.sql | create
 	$(SQL) --execute "DROP TABLE IF EXISTS $(DATABASE).$*;"
-	$(SQL) --database $(DATABASE) < $*.sql
+	$(SQL) --database $(DATABASE) < $(word 2,$^)
+	$(SQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_idx ($(IDX_$*))"
 
 	$(SQL) --execute "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
 	FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' IGNORE 1 LINES"
 
-# Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
-#
-%.sql: %.csv
-	{ head -n1 $< | perl -pe 's/([A-Z])/\l\1/g' | sed -e 's/[\.\/ ]//g' -e 's/%/perc/g' -e 's/\#/nbr/g' ; \
-	tail -n+2 $< | head -n 4096 ; } | \
-	csvsql -i mysql --tables $* > $@
+	@touch $@
 
+$f/%.sql: $f/%.csv
+	head -n 4096 $< | csvsql -i mysql --tables $* > $@
+
+# Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
 # replace MM/DD/YYYY with YYYY-MM-DD
 # Dedupe files using sort because uniq seems to choke on 1GB+ files
-%.csv: %.raw
-	sort --unique --reverse $< | \
-	sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' > $@
+$f/%.csv: $f/%.raw
+	{ head -n 1 $< | \
+	perl -pe 's/([A-Z])/\l\1/g' | \
+	sed -e 's/[\.\/ ]//g' -e 's/%/perc/g' -e 's/\#/nbr/g' ; \
+	tail -n+2 $< | \
+	sort --unique --reverse | \
+	sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' ; \
+	} > $@
 
-.INTERMEDIATE: %.raw
-%.raw:
-	curl --compressed -o $@ https://data.cityofnewyork.us/api/views/$($*)/rows.csv?accessType=DOWNLOAD
+.INTERMEDIATE: $f/%.raw
+$f/%.raw: | $f
+	curl -o $@ https://data.cityofnewyork.us/api/views/$($*)/rows.csv?accessType=DOWNLOAD
+
+$f: ; mkdir -p $@
 
 create: ; $(SQL) --execute "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
