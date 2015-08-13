@@ -87,8 +87,10 @@ $f/%.mysql: $f/%.csv $f/%.sql | create
 	$(SQL) --database $(DATABASE) < $(word 2,$^)
 	$(SQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_idx ($(IDX_$*))"
 
-	$(SQL) --execute "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
-	FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' IGNORE 1 LINES"
+	$(SQL) --execute "LOCK TABLES $(DATABASE).$* WRITE; \
+	LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
+	FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' IGNORE 1 LINES; \
+	UNLOCK TABLES;"
 
 	@touch $@
 
