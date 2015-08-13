@@ -102,7 +102,7 @@ $f/%.sql: $f/%.csv
 # Dedupe files using sort because uniq seems to choke on 1GB+ files
 $f/%.csv: $f/%.raw
 	{ head -n 1 $< | \
-	awk '{ gsub(/[ \.\/]/, ""); gsub("%", "perc"); gsub("\#", "nbr"); print tolower; }' ; \
+	awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print tolower; }' ; \
 	tail -n+2 $< | \
 	sort --unique | \
 	sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' ; \
