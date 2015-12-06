@@ -75,6 +75,8 @@ IDX_real_property_master  = documentid
 IDX_real_property_parties = documentid
 IDX_real_property_remarks = documentid
 
+SQLITEDB = acris.db
+
 DATABASE = acris
 
 MYHOST = localhost
@@ -86,10 +88,16 @@ MYSQL = mysql -u '$(USER)' $(PASSFLAG)$(PASS) $(MYSQLFLAGS)
 CURLFLAGS = --progress-bar
 
 .PHONY: clean install download \
+	sqlite sqlite-% \
 	mysql mysql-% mysql_create
 
 download: $(foreach a,$(REAL_BASIC) $(EXTRAS),data/$a.csv)
 
+sqlite: $(foreach a,$(REAL_BASIC),sqlite-$a) | sqlite-extras
+sqlite-real_complete: $(foreach a,$(REAL_REF),sqlite-$a) | sqlite
+sqlite-personal: $(foreach a,$(PERSONAL_BASIC),sqlite-$a) | sqlite-extras
+sqlite-personal_complete: $(foreach a,$(PERSONAL_REF),sqlite-$a) | sqlite-personal
+sqlite-extras: $(foreach a,$(EXTRAS),sqlite-$a)
 
 mysql: $(foreach a,$(REAL_BASIC),mysql-$a) | mysql-extras
 mysql-real_complete: $(foreach a,$(REAL_REF),mysql-$a) | mysql
@@ -117,6 +125,16 @@ mysql-%: data/%.csv data/%.head | mysql-create
 
 mysql-create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
+# SQLite
+
+sqlite-%: data/%.csv data/%.head
+	{ cat $(word 2,$^) ; tail +2 $< | head -4096 ; } | \
+	csvsql --no-constraints --db sqlite:///$(SQLITEDB) --tables $*
+
+	sqlite3 $(SQLITEDB) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
+
+	sqlite3 -separator , $(SQLITEDB) ".import $< $*"
+
 
 # Data download
 
@@ -141,6 +159,8 @@ data: ; mkdir -p $@
 mysql-clean:
 	$(MYSQL) -e "DROP DATABASE IF EXISTS $(DATABASE)"
 
+sqlite-clean:
+	rm -rf data $(SQLITEDB)
 
 
 install: requirements.txt
