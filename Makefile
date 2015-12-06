@@ -85,10 +85,13 @@ PASSFLAG = -p
 MYSQLFLAGS = -h $(MYHOST)
 MYSQL = mysql -u '$(USER)' $(PASSFLAG)$(PASS) $(MYSQLFLAGS)
 
+PSQL = psql -U "$(USER)" $(PSQLFLAGS)
+
 CURLFLAGS = --progress-bar
 
 .PHONY: clean install download \
 	sqlite sqlite-% \
+	psql psql-% \
 	mysql mysql-% mysql_create
 
 download: $(foreach a,$(REAL_BASIC) $(EXTRAS),data/$a.csv)
@@ -105,6 +108,11 @@ mysql-personal: $(foreach a,$(PERSONAL_BASIC),mysql-$a) | mysql-extras
 mysql-personal_complete: $(foreach a,$(PERSONAL_REF),mysql-$a) | mysql-personal
 mysql-extras: $(foreach a,$(EXTRAS),mysql-$a)
 
+psql: $(foreach a,$(REAL_BASIC),psql-$a) | psql-extras
+psql-real_complete: $(foreach a,$(REAL_REF),psql-$a) | psql
+psql-personal: $(foreach a,$(PERSONAL_BASIC),psql-$a) | psql-extras
+psql-personal_complete: $(foreach a,$(PERSONAL_REF),psql-$a) | psql-personal
+psql-extras: $(foreach a,$(EXTRAS),psql-$a)
 
 # MySQL
 mysql-%: data/%.csv data/%.head | mysql-create
@@ -135,6 +143,16 @@ sqlite-%: data/%.csv data/%.head
 
 	sqlite3 -separator , $(SQLITEDB) ".import $< $*"
 
+# Postgres
+psql-%: data/%.csv data/%.head | psql-create
+	{ cat $(word 2,$^) ; tail +2 $< | head -4096 ; } | \
+	csvsql --no-constraints --db postgresql://$(USER):$(PASS)@$(HOST)/$(DATABASE) --tables $*
+
+	$(PSQL) $(DATABASE) \
+		-c "COPY $* FROM '$(abspath $<)' DELIMITER ',' CSV QUOTE '\"';"
+
+psql-create:
+	$(PSQL) -c "CREATE DATABASE $(DATABASE)" || echo "$(DATABASE) probably exists"
 
 # Data download
 
@@ -162,6 +180,8 @@ mysql-clean:
 sqlite-clean:
 	rm -rf data $(SQLITEDB)
 
+psql-clean: 
+	$(PSQL) -c "DROP DATABASE $(DATABASE)"
 
 install: requirements.txt
 	pip install $(INSTALLFLAGS) --requirement=$<
