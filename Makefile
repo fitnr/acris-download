@@ -79,11 +79,9 @@ SQLITEDB = acris.db
 
 DATABASE = acris
 
-MYHOST = localhost
-
+HOST = localhost
 PASSFLAG = -p
-MYSQLFLAGS = -h $(MYHOST)
-MYSQL = mysql -u '$(USER)' $(PASSFLAG)$(PASS) $(MYSQLFLAGS)
+MYSQL = mysql -u '$(USER)' $(PASSFLAG)$(PASS) -h $(HOST) $(MYSQLFLAGS)
 
 PSQL = psql -U "$(USER)" $(PSQLFLAGS)
 
