@@ -1,34 +1,54 @@
 ACRIS Downloader
 ================
 
-This Makefile downloads NYC property transfer data and loads it into a MySQL database.
+This Makefile downloads NYC property transfer data and optionally loads it into a database.
 
-It's designed for people who know how to use MySQL, but don't necessarily want to slog through downloading huge files, manually setting up a schema and importing the those files.
+It's designed for people who know how to use databases, but don't necessarily want to slog through downloading huge files, manually setting up a schema and importing the those files.
 
-The Department of Finance supposedly updates the online records regularly, you might use this Makefile, along with a cron job, to regularly update a mirror of their database.
+Currently, SQLite, MySQL and PostGreSQL are supported. If you want to use other database software, you already probably know enough to customize the Makefile. It shouldn't be harder than changing a few flags.
 
-If you want to use other database software, you already probably know enough to customize the Makefile. It shouldn't be harder than changing a few flags.
+## the data
+
+The ACRIS data set is big and complicated, see `ACRIS Datasets` below for some explanatory notes.
+
+The Department of Finance supposedly updates the online records regularly, do you might use this Makefile, along with a cron job, to regularly update a mirror of their database.
 
 ## Requirements
 
 At least 10 GB of free disk space for the data and:
 
-* [csvkit](http://csvkit.readthedocs.org)
-* MySQL
+* [csvkit](http://csvkit.readthedocs.org), a Python package
+* MySQL, SQLite or PostGreSQL
 
 ## Installation
 
-Download this repository and open the folder in your terminal.
+Download (or `git clone`) this repository and open the folder in your terminal.
 
-See below for more detailed installation instructions.
+To install MySQL, [start here](https://dev.mysql.com/doc/refman/5.5/en/osx-installation.html).
 
+To install csvkit, follow the instructions in the [csvkit docs](http://csvkit.readthedocs.org), or try one of these:
+
+```
+# If you have admin privileges
+sudo make install
+
+# If you don't have admin privileges. Might not work.
+make install INSTALLFLAGS=--user
+```
 ## Downloading the data
-
-Check that you have mysql up and running on your machine, and a user capable of creating databases. Don't use root!
 
 Run the following command:
 ````
-$ make USER=myuser PASS=mypass
+make
+````
+
+The `data/` folder will slowly fill up with files. If you want to work directly with CSVs, you're done.
+
+## MySQL
+
+Check that you have mysql up and running on your machine, and a user capable of creating databases. Don't use root!
+````
+make mysql USER=username PASS=mypass
 ````
 
 (If you don't want to type your password in plaintext, you can leave off the PASS argument. You'll just have to enter your password many times.)
@@ -44,35 +64,55 @@ If the downloads are interrupted, just run the command again. That's the power o
 
 By default, only the real property datasets will be downloaded. To download and create tables for the personal property datasets:
 ```
-$ make personal USER=myuser PASS=mypass
+make mysql-personal USER=myuser PASS=mypass
 ```
-
-To only download the real property data without loading it into MySQL:
-````
-$ make download
-````
 
 The ACRIS dataset also includes voluminous cross-reference and remarks files that aren't downloaded by default. To download them and load into MySQL:
 ````
-$ make real_complete USER=mysqluser PASS=mysqlpass
-$ make personal_complete USER=mysqluser PASS=mysqlpass
+make mysql-real-complete USER=mysqluser PASS=mysqlpass
+make mysql-personal-complete USER=mysqluser PASS=mysqlpass
 ````
 
 ### Using an existing database
 
 If you want to add the data to tables in an existing database, run:
 ````
-$ make DATABASE=mydb USER=myuser PASS=mypass
+make DATABASE=mydb USER=myuser PASS=mypass
 ````
 
 If you have other connection requirements:
 ````
-$ make DATABASE=mydb USER=myuser PASS=mypass SQLFLAGS="--host=example.com --port=123"
+make DATABASE=mydb USER=myuser PASS=mypass HOST=example.com MYSQLFLAGS="--port=123 --example-flag"
 ````
 
-## Known issues
+## SQLite
+This command will create `acris.db`, a database containing the real property datasets.
+```
+make sqlite
+```
 
-There's a bug in how csvkit <=0.9.1 handles fields that contain only the letter 'A' - they're converted into dates. This will break the recordtype column in certain tables.
+Download and load even more data into `acris.db`:
+````
+make sqlite-real-complete
+make sqlite-personal-complete
+````
+
+## PostGreSQL
+
+```
+make psql USER=username
+```
+
+Even more:
+````
+make psql-real-complete USER=username
+make psql-personal-complete USER=username
+````
+
+Add custom connection paramaters:
+````
+make psql-real-complete USER=username PSQLFLAGS="--host=foo.com"
+````
 
 ## ACRIS Datasets
 
@@ -121,19 +161,10 @@ In ACRIS, documents are stored with codes representing longer descriptions that 
 - [States Codes](http://data.cityofnewyork.us/City-Government/ACRIS-States-Codes/5c9e-33xj) - codes in the real and personal parties property datasets
 - [Country Codes](http://data.cityofnewyork.us/City-Government/ACRIS-UCC-Collateral-Codes/q9kp-jvxv) - codes in the real and personal parties property datasets
 
-## Installing Prerequisites
 
-If you don't have MySQL installed, [start here](https://dev.mysql.com/doc/refman/5.5/en/osx-installation.html).
+## Known issues
 
-To install csvkit, follow the instructions in the [csvkit docs](http://csvkit.readthedocs.org), or try one of these:
-
-```
-# If you have admin privileges
-$ sudo make install
-
-# If you don't have admin privileges. Might not work.
-$ make install INSTALLFLAGS=--user
-```
+There's a bug in how csvkit <=0.9.1 handles fields that contain only the letter 'A' - they're converted into dates. This will break the recordtype column in certain tables.
 
 ## License
 
