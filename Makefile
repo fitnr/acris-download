@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+API = https://data.cityofnewyork.us/api/views
+
 # Download slugs for data files on https://data.cityofnewyork.us
 real_property_legals     = 8h5j-fqxa
 real_property_master     = bnx9-e6tj
@@ -50,6 +52,14 @@ EXTRAS = country_codes \
 	property_type_codes \
 	ucc_collateral_codes
 
+DATA = $(EXTRAS) \
+	$(PERSONAL_BASIC) \
+	$(PERSONAL_REF) \
+	$(REAL_BASIC) \
+	$(REAL_REF)
+
+RAWS = $(foreach a,$(DATA),data/$a.raw)
+
 IDX_document_control_codes = doctype
 IDX_country_codes          = countrycode
 IDX_property_type_codes    = propertytype
@@ -66,59 +76,72 @@ IDX_real_property_parties = documentid
 IDX_real_property_remarks = documentid
 
 DATABASE = acris
-SQL = mysql --user='$(USER)' -p$(PASS) $(SQLFLAGS)
 
-f = data
+MYHOST = localhost
 
-.PHONY: all real_property personal_property create clean install download
+PASSFLAG = -p
+MYSQLFLAGS = -h $(MYHOST)
+MYSQL = mysql -u '$(USER)' $(PASSFLAG)$(PASS) $(MYSQLFLAGS)
 
-all: $(foreach a,$(REAL_BASIC) $(EXTRAS),$f/$a.mysql)
+CURLFLAGS = --progress-bar
 
-real_complete: all $(foreach a,$(REAL_REF),$f/$a.mysql)
+.PHONY: clean install download \
+	mysql mysql-% mysql_create
 
-personal: $(foreach a,$(PERSONAL_BASIC) $(EXTRAS),$f/$a.mysql)
+download: $(foreach a,$(REAL_BASIC) $(EXTRAS),data/$a.csv)
 
-personal_complete: personal $(foreach a,$(PERSONAL_REF),$f/$a.mysql)
 
-download: $(foreach a,$(REAL_BASIC) $(EXTRAS),$f/$a.csv)
+mysql: $(foreach a,$(REAL_BASIC),mysql-$a) | mysql-extras
+mysql-real_complete: $(foreach a,$(REAL_REF),mysql-$a) | mysql
+mysql-personal: $(foreach a,$(PERSONAL_BASIC),mysql-$a) | mysql-extras
+mysql-personal_complete: $(foreach a,$(PERSONAL_REF),mysql-$a) | mysql-personal
+mysql-extras: $(foreach a,$(EXTRAS),mysql-$a)
 
-$f/%.mysql: $f/%.csv $f/%.sql | create
-	$(SQL) --execute "DROP TABLE IF EXISTS $(DATABASE).$*;"
-	$(SQL) --database $(DATABASE) < $(word 2,$^)
-	$(SQL) --execute "ALTER TABLE $(DATABASE).$* ADD INDEX $*_idx ($(IDX_$*))"
 
-	$(SQL) --execute "LOCK TABLES $(DATABASE).$* WRITE; \
-	LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
-	FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' IGNORE 1 LINES; \
-	UNLOCK TABLES;"
+# MySQL
+mysql-%: data/%.csv data/%.head | mysql-create
+	$(MYSQL) $(DATABASE) \
+		-e "DROP TABLE IF EXISTS $*;"
 
-	@touch $@
+	{ cat $(word 2,$^) ; tail +2 $< | head -4096 ; } | \
+	csvsql --no-constraints --db mysql://$(USER):$(PASS)@$(HOST)/$(DATABASE) --tables $*
+	
+	$(MYSQL) $(DATABASE) \
+		-e "ALTER TABLE $* ADD INDEX $*_idx ($(IDX_$*))"
 
-$f/%.sql: $f/%.csv
-	head -n 4096 $< | csvsql -i mysql --tables $* > $@
+	$(MYSQL) $(DATABASE) \
+		-e "LOCK TABLES $* WRITE; \
+		LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
+		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n'; \
+		UNLOCK TABLES;"
+
+mysql-create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
+
+
+# Data download
 
 # Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
 # replace MM/DD/YYYY with YYYY-MM-DD
 # Dedupe files using sort because uniq seems to choke on 1GB+ files
-$f/%.csv: $f/%.raw
-	{ head -n 1 $< | \
-	awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print tolower; }' ; \
+data/%.csv: data/%.raw
 	tail -n+2 $< | \
 	sort --unique | \
-	sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' ; \
-	} > $@
+	sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' > $@
 
-.INTERMEDIATE: $f/%.raw
-$f/%.raw: | $f
-	curl -o $@ https://data.cityofnewyork.us/api/views/$($*)/rows.csv?accessType=DOWNLOAD
+data/%.head: data/%.raw
+	head -1 $< | \
+	awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print tolower; }' > $@
 
-$f: ; mkdir -p $@
+.INTERMEDIATE: data/%.raw
+$(RAWS): data/%.raw: | data
+	curl $(CURLFLAGS) -L -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
 
-create: ; $(SQL) --execute "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
+data: ; mkdir -p $@
 
-clean:
-	$(SQL) --execute "DROP DATABASE IF EXISTS $(DATABASE)"
-	rm -rf data
+mysql-clean:
+	$(MYSQL) -e "DROP DATABASE IF EXISTS $(DATABASE)"
+
+
 
 install: requirements.txt
 	pip install $(INSTALLFLAGS) --requirement=$<
