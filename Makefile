@@ -117,7 +117,7 @@ mysql-%: data/%.csv data/%.head | mysql-create
 	$(MYSQL) $(DATABASE) \
 		-e "DROP TABLE IF EXISTS $*;"
 
-	{ cat $(word 2,$^) ; tail +2 $< | head -4096 ; } | \
+	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
 	csvsql --no-constraints --db mysql://$(USER):$(PASS)@$(HOST)/$(DATABASE) --tables $*
 	
 	$(MYSQL) $(DATABASE) \
@@ -134,7 +134,7 @@ mysql-create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 # SQLite
 
 sqlite-%: data/%.csv data/%.head
-	{ cat $(word 2,$^) ; tail +2 $< | head -4096 ; } | \
+	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
 	csvsql --no-constraints --db sqlite:///$(SQLITEDB) --tables $*
 
 	sqlite3 $(SQLITEDB) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
@@ -143,7 +143,7 @@ sqlite-%: data/%.csv data/%.head
 
 # Postgres
 psql-%: data/%.csv data/%.head | psql-create
-	{ cat $(word 2,$^) ; tail +2 $< | head -4096 ; } | \
+	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
 	csvsql --no-constraints --db postgresql://$(USER):$(PASS)@$(HOST)/$(DATABASE) --tables $*
 
 	$(PSQL) $(DATABASE) \
@@ -157,13 +157,13 @@ psql-create:
 # replace MM/DD/YYYY with YYYY-MM-DD
 # Dedupe files using sort because uniq seems to choke on 1GB+ files
 data/%.csv: data/%.raw
-	tail +2 $< | \
+	tail -n+2 $< | \
 	sort --unique | \
 	sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' > $@
 
 # Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
 data/%.head: data/%.raw
-	head -1 $< | \
+	head -n1 $< | \
 	awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print tolower; }' > $@
 
 .INTERMEDIATE: data/%.raw
