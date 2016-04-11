@@ -118,16 +118,15 @@ mysql-%: data/%.csv data/%.head | mysql-create
 		-e "DROP TABLE IF EXISTS $*;"
 
 	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
-	csvsql --no-constraints --db mysql://$(USER):$(PASS)@$(HOST)/$(DATABASE) --tables $*
+	csvsql -i mysql --tables $* | \
+	mysql $(DATABASE) -u $(USER) -p$(PASS) -h $(HOST)
 	
 	$(MYSQL) $(DATABASE) \
 		-e "ALTER TABLE $* ADD INDEX $*_idx ($(IDX_$*))"
 
-	$(MYSQL) $(DATABASE) \
-		-e "LOCK TABLES $* WRITE; \
-		LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
-		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n'; \
-		UNLOCK TABLES;"
+	$(MYSQL) $(DATABASE) -u $(USER) -p$(PASS) -h $(HOST) --local-infile \
+		-e "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
+		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n';"
 
 mysql-create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
@@ -168,7 +167,7 @@ data/%.head: data/%.raw
 
 .INTERMEDIATE: data/%.raw
 $(RAWS): data/%.raw: | data
-	curl $(CURLFLAGS) -L -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
+	curl $(CURLFLAGS) -G -L -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
 
 data: ; mkdir -p $@
 
