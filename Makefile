@@ -90,32 +90,32 @@ PSQL = psql -U "$(USER)" $(PSQLFLAGS)
 CURLFLAGS = --progress-bar
 
 .PHONY: clean install download \
-	sqlite sqlite-% \
-	psql psql-% \
-	mysql mysql-% mysql_create
+	sqlite sqlite_% \
+	psql psql_% \
+	mysql mysql_%
 
 download: $(foreach a,$(REAL_BASIC) $(EXTRAS),data/$a.csv)
 
-sqlite: $(foreach a,$(REAL_BASIC),sqlite-$a) | sqlite-extras
-sqlite-real_complete: $(foreach a,$(REAL_REF),sqlite-$a) | sqlite
-sqlite-personal: $(foreach a,$(PERSONAL_BASIC),sqlite-$a) | sqlite-extras
-sqlite-personal_complete: $(foreach a,$(PERSONAL_REF),sqlite-$a) | sqlite-personal
-sqlite-extras: $(foreach a,$(EXTRAS),sqlite-$a)
+sqlite: $(foreach a,$(REAL_BASIC),sqlite_$a) | sqlite_extras
+sqlite_real_complete: $(foreach a,$(REAL_REF),sqlite_$a) | sqlite
+sqlite_personal: $(foreach a,$(PERSONAL_BASIC),sqlite_$a) | sqlite_extras
+sqlite_personal_complete: $(foreach a,$(PERSONAL_REF),sqlite_$a) | sqlite_personal
+sqlite_extras: $(foreach a,$(EXTRAS),sqlite_$a)
 
-mysql: $(foreach a,$(REAL_BASIC),mysql-$a) | mysql-extras
-mysql-real_complete: $(foreach a,$(REAL_REF),mysql-$a) | mysql
-mysql-personal: $(foreach a,$(PERSONAL_BASIC),mysql-$a) | mysql-extras
-mysql-personal_complete: $(foreach a,$(PERSONAL_REF),mysql-$a) | mysql-personal
-mysql-extras: $(foreach a,$(EXTRAS),mysql-$a)
+mysql: $(foreach a,$(REAL_BASIC),mysql_$a) | mysql_extras
+mysql_real_complete: $(foreach a,$(REAL_REF),mysql_$a) | mysql
+mysql_personal: $(foreach a,$(PERSONAL_BASIC),mysql_$a) | mysql_extras
+mysql_personal_complete: $(foreach a,$(PERSONAL_REF),mysql_$a) | mysql_personal
+mysql_extras: $(foreach a,$(EXTRAS),mysql_$a)
 
-psql: $(foreach a,$(REAL_BASIC),psql-$a) | psql-extras
-psql-real_complete: $(foreach a,$(REAL_REF),psql-$a) | psql
-psql-personal: $(foreach a,$(PERSONAL_BASIC),psql-$a) | psql-extras
-psql-personal_complete: $(foreach a,$(PERSONAL_REF),psql-$a) | psql-personal
-psql-extras: $(foreach a,$(EXTRAS),psql-$a)
+psql: $(foreach a,$(REAL_BASIC),psql_$a) | psql_extras
+psql_real_complete: $(foreach a,$(REAL_REF),psql_$a) | psql
+psql_personal: $(foreach a,$(PERSONAL_BASIC),psql_$a) | psql_extras
+psql_personal_complete: $(foreach a,$(PERSONAL_REF),psql_$a) | psql_personal
+psql_extras: $(foreach a,$(EXTRAS),psql_$a)
 
 # MySQL
-mysql-%: data/%.csv data/%.head | mysql-create
+mysql_%: data/%.csv | mysql_create
 	$(MYSQL) $(DATABASE) \
 		-e "DROP TABLE IF EXISTS $*;"
 
@@ -130,11 +130,11 @@ mysql-%: data/%.csv data/%.head | mysql-create
 		-e "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
 		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n';"
 
-mysql-create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
+mysql_create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
 # SQLite
 
-sqlite-%: data/%.csv data/%.head
+sqlite_%: data/%.csv data/%.head
 	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
 	csvsql --no-constraints --db sqlite:///$(SQLITEDB) --tables $*
 
@@ -143,14 +143,14 @@ sqlite-%: data/%.csv data/%.head
 	sqlite3 -separator , $(SQLITEDB) ".import $< $*"
 
 # Postgres
-psql-%: data/%.csv data/%.head | psql-create
+psql_%: data/%.csv data/%.head | psql_create
 	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
 	csvsql --no-constraints --db postgresql://$(USER):$(PASS)@$(HOST)/$(DATABASE) --tables $*
 
 	$(PSQL) $(DATABASE) \
 		-c "COPY $* FROM '$(abspath $<)' DELIMITER ',' CSV QUOTE '\"';"
 
-psql-create:
+psql_create:
 	$(PSQL) -c "CREATE DATABASE $(DATABASE)" || echo "$(DATABASE) probably exists"
 
 # Data download
@@ -173,13 +173,13 @@ $(RAWS): data/%.raw: | data
 
 data: ; mkdir -p $@
 
-mysql-clean: | clean
+mysql_clean: | clean
 	$(MYSQL) -e "DROP DATABASE IF EXISTS $(DATABASE)"
 
-sqlite-clean: | clean
+sqlite_clean: | clean
 	rm -rf data $(SQLITEDB)
 
-psql-clean: | clean
+psql_clean: | clean
 	$(PSQL) -c "DROP DATABASE $(DATABASE)"
 
 clean: ; rm -rf data

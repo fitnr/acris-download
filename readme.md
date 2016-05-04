@@ -64,13 +64,13 @@ If the downloads are interrupted, just run the command again. That's the power o
 
 By default, only the real property datasets will be downloaded. To download and create tables for the personal property datasets:
 ```
-make mysql-personal USER=myuser PASS=mypass
+make mysql_personal USER=myuser PASS=mypass
 ```
 
 The ACRIS dataset also includes voluminous cross-reference and remarks files that aren't downloaded by default. To download them and load into MySQL:
 ````
-make mysql-real-complete USER=mysqluser PASS=mysqlpass
-make mysql-personal-complete USER=mysqluser PASS=mysqlpass
+make mysql_real_complete USER=mysqluser PASS=mysqlpass
+make mysql_personal_complete USER=mysqluser PASS=mysqlpass
 ````
 
 ### Using an existing database
@@ -93,8 +93,8 @@ make sqlite
 
 Download and load even more data into `acris.db`:
 ````
-make sqlite-real-complete
-make sqlite-personal-complete
+make sqlite_real_complete
+make sqlite_personal_complete
 ````
 
 ## PostGreSQL
@@ -105,13 +105,13 @@ make psql USER=username
 
 Even more:
 ````
-make psql-real-complete USER=username
-make psql-personal-complete USER=username
+make psql_real_complete USER=username
+make psql_personal_complete USER=username
 ````
 
 Add custom connection paramaters:
 ````
-make psql-real-complete USER=username PSQLFLAGS="--host=foo.com"
+make psql_real_complete USER=username PSQLFLAGS="--host=foo.com"
 ````
 
 ## ACRIS Datasets
