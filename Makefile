@@ -1,6 +1,6 @@
 # ACRIS downloader
 # Make tasks for downloading real estate property transactions from NYC's open data site
-# Copyright (C) 2015 Neil Freeman
+# Copyright (C) 2015-16 Neil Freeman
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -173,14 +173,16 @@ $(RAWS): data/%.raw: | data
 
 data: ; mkdir -p $@
 
-mysql-clean:
+mysql-clean: | clean
 	$(MYSQL) -e "DROP DATABASE IF EXISTS $(DATABASE)"
 
-sqlite-clean:
+sqlite-clean: | clean
 	rm -rf data $(SQLITEDB)
 
-psql-clean: 
+psql-clean: | clean
 	$(PSQL) -c "DROP DATABASE $(DATABASE)"
+
+clean: ; rm -rf data
 
 install: requirements.txt
 	pip install $(INSTALLFLAGS) --requirement=$<
