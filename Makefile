@@ -68,11 +68,13 @@ IDX_ucc_collateral_codes   = ucccollateralcode
 IDX_personal_property_legals  = documentid
 IDX_personal_property_master  = documentid
 IDX_personal_property_parties = documentid
+IDX_personal_property_references = documentid
 IDX_personal_property_remarks = documentid
 
 IDX_real_property_legals  = documentid
 IDX_real_property_master  = documentid
 IDX_real_property_parties = documentid
+IDX_real_property_references = documentid
 IDX_real_property_remarks = documentid
 
 SQLITEDB = acris.db
