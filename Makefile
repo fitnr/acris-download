@@ -77,15 +77,18 @@ IDX_real_property_parties = documentid
 IDX_real_property_references = documentid
 IDX_real_property_remarks = documentid
 
-SQLITEDB = acris.db
-
 DATABASE = acris
 
 HOST = localhost
 PASSFLAG = -p
+
 MYSQL = mysql -u '$(USER)' $(PASSFLAG)$(PASS) -h $(HOST) $(MYSQLFLAGS)
 
 PSQL = psql -U "$(USER)" $(PSQLFLAGS)
+
+SQLITE = sqlite3 $(DATABASE).db
+
+CSVSQLFLAGS = --tables $* --no-constraints --no-inference
 
 CURLFLAGS = --progress-bar
 
@@ -119,7 +122,7 @@ mysql_%: data/%.csv | mysql_create
 	$(MYSQL) $(DATABASE) \
 		-e "DROP TABLE IF EXISTS $*;"
 
-	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
+	head -n1000 $< | \
 	csvsql -i mysql --tables $* | \
 	mysql $(DATABASE) -u $(USER) -p$(PASS) -h $(HOST)
 	
@@ -128,44 +131,40 @@ mysql_%: data/%.csv | mysql_create
 
 	$(MYSQL) $(DATABASE) -u $(USER) -p$(PASS) -h $(HOST) --local-infile \
 		-e "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
-		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n';"
+		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' \
+		IGNORE 1 LINES;"
 
 mysql_create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 
 # SQLite
-
-sqlite_%: data/%.csv data/%.head
-	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
-	csvsql --no-constraints --db sqlite:///$(SQLITEDB) --tables $*
-
-	sqlite3 $(SQLITEDB) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
-
-	sqlite3 -separator , $(SQLITEDB) ".import $< $*"
+sqlite_%: data/%.csv
+	head -n1000 $< | \
+		csvsql $(CSVSQLFLAGS) --db sqlite:///$(SQLITEDB)
+	$(SQLITE) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
+	tail -n+2 $< | $(SQLITE) -separator , '.import /dev/stdin $*'
 
 # Postgres
-psql_%: data/%.csv data/%.head | psql_create
-	{ cat $(word 2,$^) ; tail -n+2 $< | head -n4096 ; } | \
-	csvsql --no-constraints --db postgresql://$(USER):$(PASS)@$(HOST)/$(DATABASE) --tables $*
-
-	$(PSQL) $(DATABASE) \
-		-c "COPY $* FROM '$(abspath $<)' DELIMITER ',' CSV QUOTE '\"';"
+psql_%: data/%.csv | psql_create
+	head -n1000 $< | \
+		csvsql $(CSVSQLFLAGS) --db postgresql://$(USER):$(PASS)@$(HOST)/$(DATABASE)
+	tail -n+2 $< | \
+		$(PSQL) $(DATABASE) -c "COPY $* FROM STDIN DELIMITER ',' CSV QUOTE '\"';"
 
 psql_create:
 	$(PSQL) -c "CREATE DATABASE $(DATABASE)" || echo "$(DATABASE) probably exists"
 
 # Data download
-
+# Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
 # replace MM/DD/YYYY with YYYY-MM-DD
 # Dedupe files using sort because uniq seems to choke on 1GB+ files
 data/%.csv: data/%.raw
-	tail -n+2 $< | \
-	sort --unique | \
-	sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g' > $@
-
-# Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
-data/%.head: data/%.raw
+	{ \
 	head -n1 $< | \
-	awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print tolower; }' > $@
+		awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print tolower; }'; \
+	tail -n+2 $< | \
+		sort --unique | \
+		sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g'; \
+	} > $@
 
 .INTERMEDIATE: data/%.raw
 $(RAWS): data/%.raw: | data
