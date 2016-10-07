@@ -139,7 +139,7 @@ mysql_create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
 # SQLite
 sqlite_%: data/%.csv
 	head -n1000 $< | \
-		csvsql $(CSVSQLFLAGS) --db sqlite:///$(SQLITEDB)
+		csvsql $(CSVSQLFLAGS) --db sqlite:///$(DATABASE).db
 	$(SQLITE) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
 	tail -n+2 $< | $(SQLITE) -separator , '.import /dev/stdin $*'
 
@@ -176,7 +176,7 @@ mysql_clean: | clean
 	$(MYSQL) -e "DROP DATABASE IF EXISTS $(DATABASE)"
 
 sqlite_clean: | clean
-	rm -rf data $(SQLITEDB)
+	rm -rf data $(DATABASE).db
 
 psql_clean: | clean
 	$(PSQL) -c "DROP DATABASE $(DATABASE)"
