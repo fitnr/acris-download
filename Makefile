@@ -161,7 +161,7 @@ data/%.csv: data/%.raw
 	{ \
 	head -n1 $< | \
 		awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print; }' | \
-		tr A-Z a-z; \
+		tr '[:upper:]' '[:lower:]'; \
 	tail -n+2 $< | \
 		sort --unique | \
 		sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g'; \
