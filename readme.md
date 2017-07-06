@@ -11,7 +11,7 @@ Currently, SQLite, MySQL and PostGreSQL are supported. If you want to use other 
 
 The ACRIS data set is big and complicated, see `ACRIS Datasets` below for some explanatory notes.
 
-The Department of Finance supposedly updates the online records regularly, do you might use this Makefile, along with a cron job, to regularly update a mirror of their database.
+The Department of Finance supposedly updates the online records regularly, so you might use this Makefile, along with a cron job, to regularly update a mirror of their database.
 
 ## Requirements
 
