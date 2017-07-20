@@ -162,6 +162,37 @@ In ACRIS, documents are stored with codes representing longer descriptions that 
 - [Country Codes](http://data.cityofnewyork.us/City-Government/ACRIS-UCC-Collateral-Codes/q9kp-jvxv) - codes in the real and personal parties property datasets
 
 
+## Example query
+
+This example query selects all the transactions for a particular property in Brooklyn. Multiple joins are required to the `real_property_parties` table, as there are two (or more) parties per transaction.
+
+```mysql
+SELECT
+    streetnumber,
+    streetname,
+    documentid,
+    c.description,
+    m.recordtype,
+    d.doctypedescription,
+    docdate,
+    docamount,
+    d.party1type,
+    p1.name party1name,
+    d.party2type,
+    p2.name party2name
+FROM real_property_legals a
+    LEFT JOIN real_property_master m USING (documentid)
+    LEFT JOIN real_property_parties p1 USING (documentid)
+    LEFT JOIN real_property_parties p2 USING (documentid)
+    LEFT JOIN property_type_codes c USING (propertytype)
+    LEFT JOIN document_control_codes d USING (doctype)
+WHERE a.lot = 65
+    AND a.borough = 3
+    AND a.block = 429
+    and p1.partytype = 1
+    AND p2.partytype = 2;
+```
+
 ## Known issues
 
 There's a bug in how csvkit <=0.9.1 handles fields that contain only the letter 'A' - they're converted into dates. This will break the recordtype column in certain tables.
