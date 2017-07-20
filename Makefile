@@ -156,14 +156,12 @@ psql_create:
 # Data download
 # Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
 # replace MM/DD/YYYY with YYYY-MM-DD
-# Dedupe files using sort because uniq seems to choke on 1GB+ files
 data/%.csv: data/%.raw
 	{ \
 	head -n1 $< | \
 		awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print; }' | \
 		tr '[:upper:]' '[:lower:]'; \
 	tail -n+2 $< | \
-		sort --unique | \
 		sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g'; \
 	} > $@
 
