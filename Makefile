@@ -90,7 +90,7 @@ SQLITE = sqlite3 $(DATABASE).db
 
 CSVSQLFLAGS = --tables $* --no-constraints --no-inference
 
-CURLFLAGS = --progress-bar
+CURLFLAGS = -GL
 
 .PHONY: clean install download \
 	sqlite sqlite_% \
@@ -167,7 +167,7 @@ data/%.csv: data/%.raw
 
 .INTERMEDIATE: data/%.raw
 $(RAWS): data/%.raw: | data
-	curl $(CURLFLAGS) -G -L -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
+	curl $(CURLFLAGS) -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
 
 data: ; mkdir -p $@
 
