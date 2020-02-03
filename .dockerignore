@@ -1,0 +1,10 @@
+.git
+.gitignore
+.dockerignore
+LICENSE
+VERSION
+README.md
+Dockerfile*
+docker-compose.*
+docker/*
+data/*
