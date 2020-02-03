@@ -46,6 +46,7 @@ When finished with either access method, shut down:
 `$ docker-compose down`
 
 To reset the database, delete ./data/mysql/
+To reset the downloads, delete ./data/downloads/
 
 ### Local
 
