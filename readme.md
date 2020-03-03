@@ -22,6 +22,34 @@ At least 10 GB of free disk space for the data and:
 
 ## Installation
 
+### Docker
+`$ docker-compose run --rm setup`
+
+Go out for happy hour, this will take some time.
+
+When it finishes, use either of the access methods below.
+
+You can also set an env var ACRIS_DATASET, see docker-compose.yml for options, _e.g._  
+`$ ACRIS_DATASET=mysql_personal docker-compose run --rm setup`
+
+##### Direct DB access
+`$ docker-compose up db`  
+`$ docker-compose exec db mysql -uroot -ppass`
+
+##### PhpMyAdmin access
+`$ docker-compose up myadmin`
+
+In a browser got to http://localhost:8080 user: root, pass: pass
+
+When finished with either access method, shut down:
+
+`$ docker-compose down`
+
+To reset the database, delete ./data/mysql/
+To reset the downloads, delete ./data/downloads/
+
+### Local
+
 Download (or `git clone`) this repository and open the folder in your terminal.
 
 To install MySQL, [start here](https://dev.mysql.com/doc/refman/5.5/en/osx-installation.html).
