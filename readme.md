@@ -7,7 +7,7 @@ It's designed for people who know how to use databases, but don't necessarily wa
 
 Currently, SQLite, MySQL and PostGreSQL are supported. If you want to use other database software, you already probably know enough to customize the Makefile. It shouldn't be harder than changing a few flags.
 
-## the data
+## The data
 
 The ACRIS data set is big and complicated, see `ACRIS Datasets` below for some explanatory notes.
 
@@ -74,13 +74,16 @@ The `data/` folder will slowly fill up with files. If you want to work directly 
 
 ## MySQL
 
-Check that you have mysql up and running on your machine, and a user capable of creating databases. Don't use root!
-````
-make mysql USER=username PASS=mypass
-````
+Check that you have mysql up and running on your machine, and a user capable of creating databases. Don't use root! You can use these [environment variables](https://dev.mysql.com/doc/refman/8.0/en/environment-variables.html) for setting mysql connection parameters:
+- `MYSQL_HOST`
+- `MYSQL_DATABASE` - defaults to `acris`
+- `MYSQLFLAGS` - add flags to the `mysql` command
+- `MYSQL_PWD` (use a [config file](https://dev.mysql.com/doc/refman/8.0/en/option-files.html) instead of this, if possible)
 
-(If you don't want to type your password in plaintext, you can leave off the PASS argument. You'll just have to enter your password many times.)
 
+````
+make mysql
+````
 This will run the following tasks:
 * download the ACRIS real property datasets in CSV format (it will be slow)
 * dedupe the CSVs and reformat them slightly
@@ -92,25 +95,25 @@ If the downloads are interrupted, just run the command again. That's the power o
 
 By default, only the real property datasets will be downloaded. To download and create tables for the personal property datasets:
 ```
-make mysql_personal USER=myuser PASS=mypass
+make mysql_personal
 ```
 
 The ACRIS dataset also includes voluminous cross-reference and remarks files that aren't downloaded by default. To download them and load into MySQL:
 ````
-make mysql_real_complete USER=mysqluser PASS=mysqlpass
-make mysql_personal_complete USER=mysqluser PASS=mysqlpass
+make mysql_real_complete
+make mysql_personal_complete
 ````
 
 ### Using an existing database
 
 If you want to add the data to tables in an existing database, run:
 ````
-make DATABASE=mydb USER=myuser PASS=mypass
+make
 ````
 
-If you have other connection requirements:
+If you have other connection requirements, use the MYSQLFLAGS variable. For example, you want to force SSL:
 ````
-make DATABASE=mydb USER=myuser PASS=mypass HOST=example.com MYSQLFLAGS="--port=123 --example-flag"
+make MYSQLFLAGS="--ssl"
 ````
 
 ## SQLite
@@ -125,21 +128,25 @@ make sqlite_real_complete
 make sqlite_personal_complete
 ````
 
-## PostGreSQL
+## PostgreSQL
+
+Use the standard Postgres environment variables to specify the connection.
 
 ```
-make psql USER=username
+make psql PGHOST=my.server.com PGUSER=myuser PGDATABASE=mydb
 ```
+
+By default, the data will be loaded into a schema named `acris`. You can specify another schema with the `PGSCHEMA` environment variable.
 
 Even more:
 ````
-make psql_real_complete USER=username
-make psql_personal_complete USER=username
+make psql_real_complete
+make psql_personal_complete
 ````
 
 Add custom connection paramaters:
 ````
-make psql_real_complete USER=username PSQLFLAGS="--host=foo.com"
+make psql_real_complete
 ````
 
 ## ACRIS Datasets

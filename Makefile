@@ -77,20 +77,20 @@ IDX_real_property_parties = documentid
 IDX_real_property_references = documentid
 IDX_real_property_remarks = documentid
 
-DATABASE = acris
+MYSQL_DATABASE ?= $(USER)
+mysql = mysql $(MYSQL_DATABASE) $(MYSQLFLAGS)
 
-HOST = localhost
-PASSFLAG = -p
+PGSCHEMA = acris
+psql = psql $(PSQLFLAGS)
 
-MYSQL = mysql -u '$(USER)' $(PASSFLAG)$(PASS) -h $(HOST) $(MYSQLFLAGS)
+SQLITE_DATABASE = acris.db
 
-PSQL = psql -U "$(USER)" $(PSQLFLAGS)
+sqlite = sqlite3 $(SQLITE_DATABASE)
 
-SQLITE = sqlite3 $(DATABASE).db
+csvsqlflags = --tables $* --no-inference
+csvsql = csvsql $(csvsqlflags)
 
-CSVSQLFLAGS = --tables $* --no-constraints --no-inference
-
-CURLFLAGS = -GL
+curlflags = -XGET -GLS
 
 .PHONY: clean install download \
 	sqlite sqlite_% \
@@ -119,39 +119,34 @@ psql_extras: $(foreach a,$(EXTRAS),psql_$a)
 
 # MySQL
 mysql_%: data/%.csv | mysql_create
-	$(MYSQL) $(DATABASE) \
-		-e "DROP TABLE IF EXISTS $*;"
+	$(mysql) -e "DROP TABLE IF EXISTS $*;"
 
-	head -n1000 $< | \
-	csvsql -i mysql --tables $* | \
-	mysql $(DATABASE) -u $(USER) -p$(PASS) -h $(HOST)
+	head -n1000 $< | $(csvsql) -i mysql | $(mysql)
 	
-	$(MYSQL) $(DATABASE) \
-		-e "ALTER TABLE $* ADD INDEX $*_idx ($(IDX_$*))"
+	$(mysql) -e "ALTER TABLE $* ADD INDEX $*_idx ($(IDX_$*))"
 
-	$(MYSQL) $(DATABASE) -u $(USER) -p$(PASS) -h $(HOST) --local-infile \
-		-e "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
+	$(mysql) --compress --local-infile -e "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(MYSQL_DATABASE).$* \
 		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' \
 		IGNORE 1 LINES;"
 
-mysql_create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
+mysql_create:
+	mysql -e "CREATE DATABASE IF NOT EXISTS $(MYSQL_DATABASE)"
 
 # SQLite
 sqlite_%: data/%.csv
 	head -n1000 $< | \
-		csvsql $(CSVSQLFLAGS) --db sqlite:///$(DATABASE).db
+		$(csvsql) --db sqlite:///$(SQLITE_DATABASE).db
 	$(SQLITE) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
 	tail -n+2 $< | $(SQLITE) -separator , '.import /dev/stdin $*'
 
 # Postgres
 psql_%: data/%.csv | psql_create
-	head -n1000 $< | \
-		csvsql $(CSVSQLFLAGS) --db postgresql://$(USER):$(PASS)@$(HOST)/$(DATABASE)
-	tail -n+2 $< | \
-		$(PSQL) $(DATABASE) -c "COPY $* FROM STDIN DELIMITER ',' CSV QUOTE '\"';"
+	head -n1000 $< | $(csvsql) --db-schema=$(PGSCHEMA) --db postgresql://$(PGUSER)@$(PGHOST)/$(PGDATABASE)
+	< $< $(psql) -c "COPY $(PGSCHEMA).$* FROM STDIN WITH (FORMAT csv, HEADER on)"
 
 psql_create:
-	$(PSQL) -c "CREATE DATABASE $(DATABASE)" || echo "$(DATABASE) probably exists"
+	$(psql) -c "CREATE DATABASE $(PGDATABASE)" || echo "$(PGDATABASE) probably exists"
+	$(psql) -c "CREATE SCHEMA IF NOT EXISTS $(PGSCHEMA)"
 
 # Data download
 # Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
@@ -167,18 +162,9 @@ data/%.csv: data/%.raw
 
 .INTERMEDIATE: data/%.raw
 $(RAWS): data/%.raw: | data
-	curl $(CURLFLAGS) -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
+	$(curl) -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
 
 data: ; mkdir -p $@
-
-mysql_clean: | clean
-	$(MYSQL) -e "DROP DATABASE IF EXISTS $(DATABASE)"
-
-sqlite_clean: | clean
-	rm -rf data $(DATABASE).db
-
-psql_clean: | clean
-	$(PSQL) -c "DROP DATABASE $(DATABASE)"
 
 clean: ; rm -rf data
 
