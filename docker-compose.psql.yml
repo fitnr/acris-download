@@ -29,7 +29,7 @@ services:
       PGHOST: db
       PGUSER: root
       PGPASSWORD: pass
-      PGDATABASE: acris
+      PGDATABASE: root
     depends_on:
       - db
 
