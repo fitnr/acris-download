@@ -18,35 +18,9 @@ The Department of Finance supposedly updates the online records regularly, so yo
 At least 10 GB of free disk space for the data and:
 
 * [csvkit](http://csvkit.readthedocs.org), a Python package
-* MySQL, SQLite or PostGreSQL
+* MySQL, SQLite or PostgreSQL
 
 ## Installation
-
-### Docker
-`$ docker-compose run --rm setup`
-
-Go out for happy hour, this will take some time.
-
-When it finishes, use either of the access methods below.
-
-You can also set an env var ACRIS_DATASET, see docker-compose.yml for options, _e.g._  
-`$ ACRIS_DATASET=mysql_personal docker-compose run --rm setup`
-
-##### Direct DB access
-`$ docker-compose up db`  
-`$ docker-compose exec db mysql -uroot -ppass`
-
-##### PhpMyAdmin access
-`$ docker-compose up myadmin`
-
-In a browser got to http://localhost:8080 user: root, pass: pass
-
-When finished with either access method, shut down:
-
-`$ docker-compose down`
-
-To reset the database, delete ./data/mysql/
-To reset the downloads, delete ./data/downloads/
 
 ### Local
 
@@ -67,10 +41,51 @@ make install INSTALLFLAGS=--user
 
 Run the following command:
 ````
-make
+make download
 ````
 
-The `data/` folder will slowly fill up with files. If you want to work directly with CSVs, you're done.
+The `data/` folder will slowly fill up with files. Go out for happy hour, this will take some time. If you want to work directly with CSVs, you're done.
+
+### Docker
+
+Dockerfiles are available for both MySQL and PostgreSQL. The most convienient way to run them is probably with the included docker-compose files.
+
+```
+docker compose -f docker-compose.mysql.yml up
+# or
+docker compose -f docker-compose.psql.yml up
+```
+
+You can choose a particular dataset with the `ACRIS_DATASET`  environment variable, see `docker-compose.mysql.yml` for options, e.g:
+```
+ACRIS_DATASET=mysql_personal docker-compose -f docker-compose.mysql.yml run --rm acris-download
+```
+
+#### Direct DB access
+```
+docker compose -f docker-compose.mysql.yml up
+docker compose exec -it db mysql -ppass
+```
+```
+docker compose -f docker-compose.psql.yml up
+docker compose exec -it db psql -U postgres
+```
+
+#### PhpMyAdmin access
+```
+docker-compose up adminer
+```
+
+In a browser, go to http://localhost:8080.
+
+When finished with either access method, shut down:
+
+```
+docker-compose down
+```
+
+To reset the database, delete ./data/mysql/
+To reset the downloads, delete ./data/downloads/
 
 ## MySQL
 
@@ -79,7 +94,6 @@ Check that you have mysql up and running on your machine, and a user capable of 
 - `MYSQL_DATABASE` - defaults to `acris`
 - `MYSQLFLAGS` - add flags to the `mysql` command
 - `MYSQL_PWD` (use a [config file](https://dev.mysql.com/doc/refman/8.0/en/option-files.html) instead of this, if possible)
-
 
 ````
 make mysql

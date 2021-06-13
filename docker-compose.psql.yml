@@ -1,0 +1,45 @@
+version: '3'
+services:
+  db:
+    image: postgres:13
+    ports:
+      - 5432
+    volumes:
+      - type: bind
+        source: data/psql
+        target: /var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  acris-download:
+    build: .
+    dockerfile: psql.dockerfile
+    command: ["wait", "${ACRIS_DATASET:-psql}"]
+    working_dir: /app
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+    environment:
+      PGHOST: db
+      PGPASSWORD: pass
+      PGDATABASE: postgres
+    depends_on:
+      - db
+      - admin
+
+  admin:
+    image: adminer:latest
+    restart: always
+    ports:
+      - 8080:8080
+    links:
+      - db
+    depends_on:
+      - db
+    environment:
+      PGHOST: db
+      PGPASSWORD: pass
+      PGDATABASE: postgres
