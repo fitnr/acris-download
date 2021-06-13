@@ -18,12 +18,12 @@ CREATE TABLE IF NOT EXISTS document_control_codes (
 
 CREATE TABLE IF NOT EXISTS property_type_codes (
     recordtype text,
-    propertytype varchar(2),
+    propertytype varchar(2) not null,
     typedescription text
 );
 
 CREATE TABLE IF NOT EXISTS real_property_legals (
-    documentid bigint,
+    documentid varchar(18) not null,
     recordtype text,
     borough integer,
     block integer,
@@ -36,28 +36,28 @@ CREATE TABLE IF NOT EXISTS real_property_legals (
     streetnumber text,
     streetname text,
     unit text,
-    goodthroughdate date
+    goodthroughdate text
 );
 
 CREATE TABLE IF NOT EXISTS real_property_master (
-    documentid bigint not null,
+    documentid varchar(18) not null,
     recordtype text,
     crfn bigint,
     borough integer,
     doctype text,
-    docdate date,
+    docdate text,
     docamount numeric,
-    recordedfiled date,
-    modifieddate date,
+    recordedfiled text,
+    modifieddate text,
     reelyear integer,
     reelnbr integer,
     reelpage integer,
     perctransferred numeric,
-    goodthroughdate date
+    goodthroughdate text
 );
 
 CREATE TABLE IF NOT EXISTS real_property_parties (
-    documentid bigint,
+    documentid varchar(18) not null,
     recordtype text,
     partytype integer,
     name text,
@@ -67,11 +67,11 @@ CREATE TABLE IF NOT EXISTS real_property_parties (
     city text,
     state tinytext,
     zip text,
-    goodthroughdate date
+    goodthroughdate text
 );
 
 CREATE TABLE IF NOT EXISTS real_property_references (
-    documentid bigint,
+    documentid varchar(18) not null,
     recordtype text,
     referencebycrfn text,
     referencebydocid text,

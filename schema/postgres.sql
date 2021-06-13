@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS property_type_codes (
 );
 
 CREATE TABLE IF NOT EXISTS real_property_legals (
-    documentid bigint,
+    documentid text,
     recordtype text,
     borough int,
     block int,
@@ -40,28 +40,28 @@ CREATE TABLE IF NOT EXISTS real_property_legals (
     streetnumber text,
     streetname text,
     unit text,
-    goodthroughdate date
+    goodthroughdate text
 );
 
 CREATE TABLE IF NOT EXISTS real_property_master (
-    documentid bigint not null,
+    documentid text not null,
     recordtype text,
     crfn bigint,
     borough integer,
     doctype text,
-    docdate date,
+    docdate text,
     docamount numeric,
-    recordedfiled date,
-    modifieddate date,
+    recordedfiled text,
+    modifieddate text,
     reelyear int,
     reelnbr int,
     reelpage int,
     perctransferred numeric,
-    goodthroughdate date
+    goodthroughdate text
 );
 
 CREATE TABLE IF NOT EXISTS real_property_parties (
-    documentid bigint,
+    documentid text,
     recordtype text,
     partytype integer,
     name text,
@@ -71,11 +71,11 @@ CREATE TABLE IF NOT EXISTS real_property_parties (
     city text,
     state text,
     zip text,
-    goodthroughdate date
+    goodthroughdate text
 );
 
 CREATE TABLE IF NOT EXISTS real_property_references (
-    documentid bigint,
+    documentid text,
     recordtype text,
     referencebycrfn text,
     referencebydocid text,
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS real_property_references (
     referencebyreelpage integer,
     not_used_1 boolean,
     not_used_2 boolean,
-    goodthroughdate timestamp without time zone
+    goodthroughdate text
 );
 
 CREATE TABLE IF NOT EXISTS ucc_collateral_codes (

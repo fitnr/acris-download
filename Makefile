@@ -59,7 +59,7 @@ DATA = $(EXTRAS) \
 	$(REAL_BASIC) \
 	$(REAL_REF)
 
-RAWS = $(foreach a,$(DATA),data/$a.raw)
+CSVS = $(foreach a,$(DATA),data/$a.csv)
 
 IDX_document_control_codes = doctype
 IDX_country_codes          = countrycode
@@ -88,13 +88,11 @@ SQLITE_DATABASE = acris.db
 
 sqlite = sqlite3 $(SQLITE_DATABASE)
 
-curlflags = -XGET -GLS
+curlflags = -XGET -GLsS --compressed
 curl = curl $(curlflags)
 
-# replace MM/DD/YYYY with YYYY-MM-DD
-sed = sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g'
-
 .PHONY: clean install download \
+	clean-docker test_% \
 	sqlite sqlite_% \
 	psql psql_% \
 	mysql mysql_%
@@ -124,7 +122,7 @@ mysql_%: data/%.csv | mysql_init
 	$(mysql) --compress --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
 	INTO TABLE $(MYSQL_DATABASE).$* \
 	FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' \
-	LINES TERMINATED BY '\n' "
+	LINES TERMINATED BY '\n' IGNORE 1 LINES"
 
 	$(mysql) -e "ALTER TABLE $* ADD INDEX $*_idx ($(IDX_$*))"
 
@@ -136,7 +134,7 @@ mysql_create:
 
 # SQLite
 sqlite_%: data/%.csv | sqlite_init
-	$(sqlite) -separator , ".import $< $*"
+	$(sqlite) -separator , ".import $< $* --skip 1"
 	$(sqlite) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
 
 sqlite_init:
@@ -144,7 +142,7 @@ sqlite_init:
 
 # Postgres
 psql_%: data/%.csv | psql_init
-	$(psql) -c "\copy $(PGSCHEMA).$* FROM '$<' WITH (FORMAT csv, HEADER off)"
+	$(psql) -c "\copy $(PGSCHEMA).$* FROM '$<' WITH (FORMAT csv, HEADER on)"
 	$(psql) -c "CREATE INDEX $*_idx ON $(PGSCHEMA).$* ($(IDX_$*))"
 
 psql_init:
@@ -153,18 +151,18 @@ psql_init:
 psql_create:
 	-$(psql) $(or $(PGUSER),$(USER)) -c "CREATE DATABASE $(or $(PGDATABASE),$(PGUSER),$(USER))"
 
-# Data conversion
-data/%.csv: data/%.raw
-	tail -n+2 $< | $(sed) > $@
-
 # Data download
-.INTERMEDIATE: data/%.raw
-$(RAWS): data/%.raw: | data
+.INTERMEDIATE: data/%.csv
+$(CSVS): data/%.csv: | data
 	$(curl) -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
 
 data: ; mkdir -p $@
 
-clean: ; rm -rf data/*.csv data/*.raw
+clean: ; rm -rf data/*.csv
+
+clean-docker: ## Remove data directories created by docker compose
+	rm -rf docker/psql/pgdata docker/mysql/*
+	touch docker/mysql/.placeholder
 
 # Very hacky way to make sure db services are ready in docker compose
 wait: ; sleep 30
