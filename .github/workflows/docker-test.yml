@@ -23,7 +23,7 @@ jobs:
           COMPOSE_FILE: docker-compose.mysql.yml
 
       - name: Run the stack
-        run: docker-compose up --exit-code-from acris-download
+        run: docker-compose up --exit-code-from acris-mysql
         env:
           COMPOSE_FILE: docker-compose.mysql.yml
 
@@ -47,6 +47,6 @@ jobs:
           COMPOSE_FILE: docker-compose.psql.yml
 
       - name: Run the stack
-        run: docker-compose up --exit-code-from acris-download
+        run: docker-compose up --exit-code-from acris-psql
         env:
           COMPOSE_FILE: docker-compose.psql.yml

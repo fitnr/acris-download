@@ -95,6 +95,13 @@ Check that you have mysql up and running on your machine, and a user capable of 
 - `MYSQLFLAGS` - add flags to the `mysql` command
 - `MYSQL_PWD` (use a [config file](https://dev.mysql.com/doc/refman/8.0/en/option-files.html) instead of this, if possible)
 
+To specify a local user, the config file mentioned above works best. If that's not available, set the `MYSQLFLAGS` environment variable to the user flag, e.g.:
+```
+export MYSQLFLAGS=-uroot
+```
+
+### Commands
+
 ````
 make mysql
 ````

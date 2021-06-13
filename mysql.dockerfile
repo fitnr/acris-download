@@ -10,7 +10,7 @@ RUN apt update \
 WORKDIR app
 
 COPY Makefile .
-COPY mysql .
+COPY schema/mysql.sql schema/mysql.sql
 
 ENV MYSQL_DATABASE acris
 

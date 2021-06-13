@@ -14,6 +14,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+SHELL := /bin/sh
 
 API = https://data.cityofnewyork.us/api/views
 
@@ -87,10 +88,11 @@ SQLITE_DATABASE = acris.db
 
 sqlite = sqlite3 $(SQLITE_DATABASE)
 
-csvsqlflags = --tables $* --no-inference
-csvsql = csvsql $(csvsqlflags)
-
 curlflags = -XGET -GLS
+curl = curl $(curlflags)
+
+# replace MM/DD/YYYY with YYYY-MM-DD
+sed = sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g'
 
 .PHONY: clean install download \
 	sqlite sqlite_% \
@@ -118,55 +120,71 @@ psql_personal_complete: $(foreach a,$(PERSONAL_REF),psql_$a) | psql_personal
 psql_extras: $(foreach a,$(EXTRAS),psql_$a)
 
 # MySQL
-mysql_%: data/%.csv | mysql_create
-	$(mysql) -e "DROP TABLE IF EXISTS $*;"
+mysql_%: data/%.csv | mysql_init
+	$(mysql) --compress --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
+	INTO TABLE $(MYSQL_DATABASE).$* \
+	FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' \
+	LINES TERMINATED BY '\n' "
 
-	head -n1000 $< | $(csvsql) -i mysql | $(mysql)
-	
 	$(mysql) -e "ALTER TABLE $* ADD INDEX $*_idx ($(IDX_$*))"
 
-	$(mysql) --compress --local-infile -e "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(MYSQL_DATABASE).$* \
-		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' \
-		IGNORE 1 LINES;"
+mysql_init: | mysql_create
+	$(mysql) < schema/mysql.sql
 
 mysql_create:
-	mysql -e "CREATE DATABASE IF NOT EXISTS $(MYSQL_DATABASE)"
+	mysql $(MYSQLFLAGS) -e "CREATE DATABASE IF NOT EXISTS $(MYSQL_DATABASE)"
 
 # SQLite
-sqlite_%: data/%.csv
-	head -n1000 $< | \
-		$(csvsql) --db sqlite:///$(SQLITE_DATABASE).db
-	$(SQLITE) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
-	tail -n+2 $< | $(SQLITE) -separator , '.import /dev/stdin $*'
+sqlite_%: data/%.csv | sqlite_init
+	$(sqlite) -separator , ".import $< $*"
+	$(sqlite) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
+
+sqlite_init:
+	$(sqlite) < schema/sqlite.sql
 
 # Postgres
-psql_%: data/%.csv | psql_create
-	head -n1000 $< | $(csvsql) --db-schema=$(PGSCHEMA) --db postgresql://$(PGUSER)@$(PGHOST)/$(PGDATABASE)
-	< $< $(psql) -c "COPY $(PGSCHEMA).$* FROM STDIN WITH (FORMAT csv, HEADER on)"
+psql_%: data/%.csv | psql_init
+	$(psql) -c "\copy $(PGSCHEMA).$* FROM '$<' WITH (FORMAT csv, HEADER off)"
+	$(psql) -c "CREATE INDEX $*_idx ON $(PGSCHEMA).$* ($(IDX_$*))"
+
+psql_init:
+	$(psql) -v schema=$(PGSCHEMA) -f schema/postgres.sql
 
 psql_create:
-	$(psql) -c "CREATE DATABASE $(PGDATABASE)" || echo "$(PGDATABASE) probably exists"
-	$(psql) -c "CREATE SCHEMA IF NOT EXISTS $(PGSCHEMA)"
+	-$(psql) $(or $(PGUSER),$(USER)) -c "CREATE DATABASE $(or $(PGDATABASE),$(PGUSER),$(USER))"
+
+# Data conversion
+data/%.csv: data/%.raw
+	tail -n+2 $< | $(sed) > $@
 
 # Data download
-# Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
-# replace MM/DD/YYYY with YYYY-MM-DD
-data/%.csv: data/%.raw
-	{ \
-	head -n1 $< | \
-		awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print; }' | \
-		tr '[:upper:]' '[:lower:]'; \
-	tail -n+2 $< | \
-		sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g'; \
-	} > $@
-
 .INTERMEDIATE: data/%.raw
 $(RAWS): data/%.raw: | data
 	$(curl) -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
 
 data: ; mkdir -p $@
 
-clean: ; rm -rf data
+clean: ; rm -rf data/*.csv data/*.raw
+
+# Very hacky way to make sure db services are ready in docker compose
+wait: ; sleep 30
+
+test-query = SELECT streetnumber, streetname, documentid, c.typedescription, \
+	m.recordtype, d.doctypedescription, docdate, docamount, p1.name party1name, p2.name party2name \
+	FROM real_property_legals a \
+	LEFT JOIN real_property_master m USING (documentid) \
+	LEFT JOIN real_property_parties p1 USING (documentid) \
+	LEFT JOIN real_property_parties p2 USING (documentid) \
+	LEFT JOIN property_type_codes c USING (propertytype) \
+	LEFT JOIN document_control_codes d USING (doctype) \
+	WHERE p1.partytype = 1 AND p2.partytype = 2 \
+	LIMIT 20;
+
+mysql_test: ; $(mysql) -e "$(test-query)"
+
+psql_test: ; PGOPTIONS=--search_path=$(PGSCHEMA) $(psql) -c "$(test-query)"
+
+sqlite_test: ; $(sqlite) "$(test-query)"
 
 install: requirements.txt
 	pip install $(INSTALLFLAGS) --requirement=$<

@@ -5,45 +5,39 @@ services:
     image: mysql:8.0
     command: [
       "--default-authentication-plugin=mysql_native_password",
+      "--default-storage-engine=MyISAM",
       "--local-infile=ON"
     ]
     ports:
       - 3306
     volumes:
-      - ./data/mysql:/var/lib/mysql
+      - ./docker/mysql:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: pass
 
-  acris-download:
+  acris-mysql:
     build:
       context: .
       dockerfile: mysql.dockerfile
     # ACRIS_DATASET: mysql, mysql_real_complete, mysql_personal, mysql_personal_complete, mysql_extras
     # See Makefile for latest MySQL options
-    command: ["wait", "${ACRIS_DATASET:-mysql}"]
+    command: ["wait", "${ACRIS_DATASET:-mysql}", "mysql_test"]
     working_dir: /app
     volumes:
-      - ./mysql/client/my.cnf:/etc/mysql/my.cnf
       - type: bind
-        source: .
-        target: /app
+        source: ./data
+        target: /app/data
     environment:
       MYSQL_HOST: db
       MYSQL_PWD: pass
       MYSQL_DATABASE: acris
     depends_on:
       - db
-      - admin
 
   admin:
     image: adminer:latest
     restart: always
     ports:
-      - 8080:80
-    links:
-      - db
+      - 8080:8080
     depends_on:
       - db
-    environment:
-      MYSQL_HOST: db
-      MYSQL_PWD: pass
