@@ -17,7 +17,6 @@ The Department of Finance supposedly updates the online records regularly, so yo
 
 At least 10 GB of free disk space for the data and:
 
-* [csvkit](http://csvkit.readthedocs.org), a Python package
 * MySQL, SQLite or PostgreSQL
 
 ## Installation
@@ -26,17 +25,6 @@ At least 10 GB of free disk space for the data and:
 
 Download (or `git clone`) this repository and open the folder in your terminal.
 
-To install MySQL, [start here](https://dev.mysql.com/doc/refman/5.5/en/osx-installation.html).
-
-To install csvkit, follow the instructions in the [csvkit docs](http://csvkit.readthedocs.org), or try one of these:
-
-```
-# If you have admin privileges
-sudo make install
-
-# If you don't have admin privileges. Might not work.
-make install INSTALLFLAGS=--user
-```
 ## Downloading the data
 
 Run the following command:
@@ -49,6 +37,7 @@ The `data/` folder will slowly fill up with files. Go out for happy hour, this w
 ### Docker
 
 Dockerfiles are available for both MySQL and PostgreSQL. The most convienient way to run them is probably with the included docker-compose files.
+These will write the table data to the `docker/` directory.
 
 ```
 docker compose -f docker-compose.mysql.yml up
@@ -125,18 +114,6 @@ make mysql_real_complete
 make mysql_personal_complete
 ````
 
-### Using an existing database
-
-If you want to add the data to tables in an existing database, run:
-````
-make
-````
-
-If you have other connection requirements, use the MYSQLFLAGS variable. For example, you want to force SSL:
-````
-make MYSQLFLAGS="--ssl"
-````
-
 ## SQLite
 This command will create `acris.db`, a database containing the real property datasets.
 ```
@@ -169,6 +146,10 @@ Add custom connection paramaters:
 ````
 make psql_real_complete
 ````
+
+## Testing
+
+If you want to test your setup without downloading the multi-GB ACRIS datasets, truncated sample data is available in the `tests/` directory. Copy the files in `tests/data/` to `data/` to get a sense of how the process works.
 
 ## ACRIS Datasets
 
@@ -216,7 +197,6 @@ In ACRIS, documents are stored with codes representing longer descriptions that 
 - [Property Types Codes](http://data.cityofnewyork.us/City-Government/ACRIS-Property-Types-Codes/94g4-w6xz) - codes in the personal and real property legals datasets
 - [States Codes](http://data.cityofnewyork.us/City-Government/ACRIS-States-Codes/5c9e-33xj) - codes in the real and personal parties property datasets
 - [Country Codes](http://data.cityofnewyork.us/City-Government/ACRIS-UCC-Collateral-Codes/q9kp-jvxv) - codes in the real and personal parties property datasets
-
 
 ## Example query
 
