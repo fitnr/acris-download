@@ -1,0 +1,42 @@
+version: '3'
+services:
+  db:
+    image: postgres:13
+    ports:
+      - 5432
+    volumes:
+      - type: bind
+        source: ./docker/psql
+        target: /var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: root
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  acris-psql:
+    build:
+      context: .
+      dockerfile: psql.dockerfile
+    # ACRIS_DATASET: psql, psql_real_complete, psql_personal, psql_personal_complete, psql_extras
+    # See Makefile for latest MySQL options
+    command: ["${ACRIS_DATASET:-psql}"]
+    working_dir: /app
+    volumes:
+      - type: bind
+        source: ./data
+        target: /app/data
+    environment:
+      PGHOST: db
+      PGUSER: root
+      PGPASSWORD: pass
+      PGDATABASE: root
+    depends_on:
+      - db
+
+  admin:
+    image: adminer:latest
+    restart: always
+    ports:
+      - 8080:8080
+    depends_on:
+      - db

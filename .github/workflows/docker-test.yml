@@ -1,0 +1,23 @@
+name: Docker compose tests
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      COMPOSE_FILE: docker-compose.test.yml
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Build the images
+        run: docker-compose build
+
+      - name: Run mysql services
+        run: docker-compose run mysql
+
+      - name: Run psql services
+        run: docker-compose run psql

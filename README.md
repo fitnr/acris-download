@@ -7,7 +7,7 @@ It's designed for people who know how to use databases, but don't necessarily wa
 
 Currently, SQLite, MySQL and PostGreSQL are supported. If you want to use other database software, you already probably know enough to customize the Makefile. It shouldn't be harder than changing a few flags.
 
-## the data
+## The data
 
 The ACRIS data set is big and complicated, see `ACRIS Datasets` below for some explanatory notes.
 
@@ -17,70 +17,83 @@ The Department of Finance supposedly updates the online records regularly, so yo
 
 At least 10 GB of free disk space for the data and:
 
-* [csvkit](http://csvkit.readthedocs.org), a Python package
-* MySQL, SQLite or PostGreSQL
+* MySQL, SQLite or PostgreSQL
 
 ## Installation
-
-### Docker
-`$ docker-compose run --rm setup`
-
-Go out for happy hour, this will take some time.
-
-When it finishes, use either of the access methods below.
-
-You can also set an env var ACRIS_DATASET, see docker-compose.yml for options, _e.g._  
-`$ ACRIS_DATASET=mysql_personal docker-compose run --rm setup`
-
-##### Direct DB access
-`$ docker-compose up db`  
-`$ docker-compose exec db mysql -uroot -ppass`
-
-##### PhpMyAdmin access
-`$ docker-compose up myadmin`
-
-In a browser got to http://localhost:8080 user: root, pass: pass
-
-When finished with either access method, shut down:
-
-`$ docker-compose down`
-
-To reset the database, delete ./data/mysql/
-To reset the downloads, delete ./data/downloads/
 
 ### Local
 
 Download (or `git clone`) this repository and open the folder in your terminal.
 
-To install MySQL, [start here](https://dev.mysql.com/doc/refman/5.5/en/osx-installation.html).
-
-To install csvkit, follow the instructions in the [csvkit docs](http://csvkit.readthedocs.org), or try one of these:
-
-```
-# If you have admin privileges
-sudo make install
-
-# If you don't have admin privileges. Might not work.
-make install INSTALLFLAGS=--user
-```
 ## Downloading the data
 
 Run the following command:
 ````
-make
+make download
 ````
 
-The `data/` folder will slowly fill up with files. If you want to work directly with CSVs, you're done.
+The `data/` folder will slowly fill up with files. Go out for happy hour, this will take some time. If you want to work directly with CSVs, you're done.
+
+### Docker
+
+Dockerfiles are available for both MySQL and PostgreSQL. The most convienient way to run them is probably with the included docker-compose files.
+These will write the table data to the `docker/` directory.
+
+```
+docker compose -f docker-compose.mysql.yml up
+# or
+docker compose -f docker-compose.psql.yml up
+```
+
+You can choose a particular dataset with the `ACRIS_DATASET`  environment variable, see `docker-compose.mysql.yml` for options, e.g:
+```
+ACRIS_DATASET=mysql_personal docker-compose -f docker-compose.mysql.yml run --rm acris-download
+```
+
+#### Direct DB access
+```
+docker compose -f docker-compose.mysql.yml up
+docker compose exec -it db mysql -ppass
+```
+```
+docker compose -f docker-compose.psql.yml up
+docker compose exec -it db psql -U postgres
+```
+
+#### PhpMyAdmin access
+```
+docker-compose up adminer
+```
+
+In a browser, go to http://localhost:8080.
+
+When finished with either access method, shut down:
+
+```
+docker-compose down
+```
+
+To reset the database, delete ./data/mysql/
+To reset the downloads, delete ./data/downloads/
 
 ## MySQL
 
-Check that you have mysql up and running on your machine, and a user capable of creating databases. Don't use root!
-````
-make mysql USER=username PASS=mypass
-````
+Check that you have mysql up and running on your machine, and a user capable of creating databases. Don't use root! You can use these [environment variables](https://dev.mysql.com/doc/refman/8.0/en/environment-variables.html) for setting mysql connection parameters:
+- `MYSQL_HOST`
+- `MYSQL_DATABASE` - defaults to `acris`
+- `MYSQLFLAGS` - add flags to the `mysql` command
+- `MYSQL_PWD` (use a [config file](https://dev.mysql.com/doc/refman/8.0/en/option-files.html) instead of this, if possible)
 
-(If you don't want to type your password in plaintext, you can leave off the PASS argument. You'll just have to enter your password many times.)
+To specify a local user, the config file mentioned above works best. If that's not available, set the `MYSQLFLAGS` environment variable to the user flag, e.g.:
+```
+export MYSQLFLAGS=-uroot
+```
 
+### Commands
+
+````
+make mysql
+````
 This will run the following tasks:
 * download the ACRIS real property datasets in CSV format (it will be slow)
 * dedupe the CSVs and reformat them slightly
@@ -92,25 +105,13 @@ If the downloads are interrupted, just run the command again. That's the power o
 
 By default, only the real property datasets will be downloaded. To download and create tables for the personal property datasets:
 ```
-make mysql_personal USER=myuser PASS=mypass
+make mysql_personal
 ```
 
 The ACRIS dataset also includes voluminous cross-reference and remarks files that aren't downloaded by default. To download them and load into MySQL:
 ````
-make mysql_real_complete USER=mysqluser PASS=mysqlpass
-make mysql_personal_complete USER=mysqluser PASS=mysqlpass
-````
-
-### Using an existing database
-
-If you want to add the data to tables in an existing database, run:
-````
-make DATABASE=mydb USER=myuser PASS=mypass
-````
-
-If you have other connection requirements:
-````
-make DATABASE=mydb USER=myuser PASS=mypass HOST=example.com MYSQLFLAGS="--port=123 --example-flag"
+make mysql_real_complete
+make mysql_personal_complete
 ````
 
 ## SQLite
@@ -125,22 +126,30 @@ make sqlite_real_complete
 make sqlite_personal_complete
 ````
 
-## PostGreSQL
+## PostgreSQL
+
+Use the standard Postgres environment variables to specify the connection.
 
 ```
-make psql USER=username
+make psql PGHOST=my.server.com PGUSER=myuser PGDATABASE=mydb
 ```
+
+By default, the data will be loaded into a schema named `acris`. You can specify another schema with the `PGSCHEMA` environment variable.
 
 Even more:
 ````
-make psql_real_complete USER=username
-make psql_personal_complete USER=username
+make psql_real_complete
+make psql_personal_complete
 ````
 
 Add custom connection paramaters:
 ````
-make psql_real_complete USER=username PSQLFLAGS="--host=foo.com"
+make psql_real_complete
 ````
+
+## Testing
+
+If you want to test your setup without downloading the multi-GB ACRIS datasets, truncated sample data is available in the `tests/` directory. Copy the files in `tests/data/` to `data/` to get a sense of how the process works.
 
 ## ACRIS Datasets
 
@@ -188,7 +197,6 @@ In ACRIS, documents are stored with codes representing longer descriptions that 
 - [Property Types Codes](http://data.cityofnewyork.us/City-Government/ACRIS-Property-Types-Codes/94g4-w6xz) - codes in the personal and real property legals datasets
 - [States Codes](http://data.cityofnewyork.us/City-Government/ACRIS-States-Codes/5c9e-33xj) - codes in the real and personal parties property datasets
 - [Country Codes](http://data.cityofnewyork.us/City-Government/ACRIS-UCC-Collateral-Codes/q9kp-jvxv) - codes in the real and personal parties property datasets
-
 
 ## Example query
 

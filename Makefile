@@ -14,6 +14,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+SHELL := /bin/sh
 
 API = https://data.cityofnewyork.us/api/views
 
@@ -58,7 +59,7 @@ DATA = $(EXTRAS) \
 	$(REAL_BASIC) \
 	$(REAL_REF)
 
-RAWS = $(foreach a,$(DATA),data/$a.raw)
+CSVS = $(foreach a,$(DATA),data/$a.csv)
 
 IDX_document_control_codes = doctype
 IDX_country_codes          = countrycode
@@ -77,22 +78,21 @@ IDX_real_property_parties = documentid
 IDX_real_property_references = documentid
 IDX_real_property_remarks = documentid
 
-DATABASE = acris
+MYSQL_DATABASE ?= $(USER)
+mysql = mysql $(MYSQL_DATABASE) $(MYSQLFLAGS)
 
-HOST = localhost
-PASSFLAG = -p
+PGSCHEMA = acris
+psql = psql $(PSQLFLAGS)
 
-MYSQL = mysql -u '$(USER)' $(PASSFLAG)$(PASS) -h $(HOST) $(MYSQLFLAGS)
+SQLITE_DATABASE = acris.db
 
-PSQL = psql -U "$(USER)" $(PSQLFLAGS)
+sqlite = sqlite3 $(SQLITE_DATABASE)
 
-SQLITE = sqlite3 $(DATABASE).db
-
-CSVSQLFLAGS = --tables $* --no-constraints --no-inference
-
-CURLFLAGS = -GL
+curlflags = -XGET -GLsS --compressed
+curl = curl $(curlflags)
 
 .PHONY: clean install download \
+	clean-docker test_% \
 	sqlite sqlite_% \
 	psql psql_% \
 	mysql mysql_%
@@ -118,69 +118,71 @@ psql_personal_complete: $(foreach a,$(PERSONAL_REF),psql_$a) | psql_personal
 psql_extras: $(foreach a,$(EXTRAS),psql_$a)
 
 # MySQL
-mysql_%: data/%.csv | mysql_create
-	$(MYSQL) $(DATABASE) \
-		-e "DROP TABLE IF EXISTS $*;"
+mysql_%: data/%.csv | mysql_init
+	$(mysql) --compress --local-infile -e "LOAD DATA LOCAL INFILE '$<' \
+	INTO TABLE $(MYSQL_DATABASE).$* \
+	FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' \
+	LINES TERMINATED BY '\n' IGNORE 1 LINES"
 
-	head -n1000 $< | \
-	csvsql -i mysql --tables $* | \
-	mysql $(DATABASE) -u $(USER) -p$(PASS) -h $(HOST)
-	
-	$(MYSQL) $(DATABASE) \
-		-e "ALTER TABLE $* ADD INDEX $*_idx ($(IDX_$*))"
+	$(mysql) -e "ALTER TABLE $* ADD INDEX $*_idx ($(IDX_$*))"
 
-	$(MYSQL) $(DATABASE) -u $(USER) -p$(PASS) -h $(HOST) --local-infile \
-		-e "LOAD DATA LOCAL INFILE '$<' INTO TABLE $(DATABASE).$* \
-		FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' \
-		IGNORE 1 LINES;"
+mysql_init: | mysql_create
+	$(mysql) < schema/mysql.sql
 
-mysql_create: ; $(MYSQL) -e "CREATE DATABASE IF NOT EXISTS $(DATABASE)"
+mysql_create:
+	mysql $(MYSQLFLAGS) -e "CREATE DATABASE IF NOT EXISTS $(MYSQL_DATABASE)"
 
 # SQLite
-sqlite_%: data/%.csv
-	head -n1000 $< | \
-		csvsql $(CSVSQLFLAGS) --db sqlite:///$(DATABASE).db
-	$(SQLITE) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
-	tail -n+2 $< | $(SQLITE) -separator , '.import /dev/stdin $*'
+sqlite_%: data/%.csv | sqlite_init
+	$(sqlite) -separator , ".import $< $* --skip 1"
+	$(sqlite) "CREATE INDEX $*_idx ON $* ($(IDX_$*))"
+
+sqlite_init:
+	$(sqlite) < schema/sqlite.sql
 
 # Postgres
-psql_%: data/%.csv | psql_create
-	head -n1000 $< | \
-		csvsql $(CSVSQLFLAGS) --db postgresql://$(USER):$(PASS)@$(HOST)/$(DATABASE)
-	tail -n+2 $< | \
-		$(PSQL) $(DATABASE) -c "COPY $* FROM STDIN DELIMITER ',' CSV QUOTE '\"';"
+psql_%: data/%.csv | psql_init
+	$(psql) -c "\copy $(PGSCHEMA).$* FROM '$<' WITH (FORMAT csv, HEADER on)"
+	$(psql) -c "CREATE INDEX $*_idx ON $(PGSCHEMA).$* ($(IDX_$*))"
+
+psql_init:
+	$(psql) -v schema=$(PGSCHEMA) -f schema/postgres.sql
 
 psql_create:
-	$(PSQL) -c "CREATE DATABASE $(DATABASE)" || echo "$(DATABASE) probably exists"
+	-$(psql) $(or $(PGUSER),$(USER)) -c "CREATE DATABASE $(or $(PGDATABASE),$(PGUSER),$(USER))"
 
 # Data download
-# Try to get pretty column names by deleting spaces, periods, slashes, replacing '%' with 'perc'.
-# replace MM/DD/YYYY with YYYY-MM-DD
-data/%.csv: data/%.raw
-	{ \
-	head -n1 $< | \
-		awk '{ gsub(/[ \.\/]/, ""); sub("%", "perc"); sub("\#", "nbr"); print; }' | \
-		tr '[:upper:]' '[:lower:]'; \
-	tail -n+2 $< | \
-		sed -e 's/,\([01][0-9]\)\/\([0123][0-9]\)\/\([0-9]\{4\}\)/,\3-\1-\2/g'; \
-	} > $@
-
-.INTERMEDIATE: data/%.raw
-$(RAWS): data/%.raw: | data
-	curl $(CURLFLAGS) -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
+.INTERMEDIATE: data/%.csv
+$(CSVS): data/%.csv: | data
+	$(curl) -o $@ $(API)/$($*)/rows.csv -d accessType=DOWNLOAD
 
 data: ; mkdir -p $@
 
-mysql_clean: | clean
-	$(MYSQL) -e "DROP DATABASE IF EXISTS $(DATABASE)"
+clean: ; rm -rf data/*.csv
 
-sqlite_clean: | clean
-	rm -rf data $(DATABASE).db
+clean-docker: ## Remove data directories created by docker compose
+	rm -rf docker/psql/pgdata docker/mysql/*
+	touch docker/mysql/.placeholder
 
-psql_clean: | clean
-	$(PSQL) -c "DROP DATABASE $(DATABASE)"
+# Very hacky way to make sure db services are ready in docker compose
+wait: ; sleep 30
 
-clean: ; rm -rf data
+test-query = SELECT streetnumber, streetname, documentid, c.typedescription, \
+	m.recordtype, d.doctypedescription, docdate, docamount, p1.name party1name, p2.name party2name \
+	FROM real_property_legals a \
+	LEFT JOIN real_property_master m USING (documentid) \
+	LEFT JOIN real_property_parties p1 USING (documentid) \
+	LEFT JOIN real_property_parties p2 USING (documentid) \
+	LEFT JOIN property_type_codes c USING (propertytype) \
+	LEFT JOIN document_control_codes d USING (doctype) \
+	WHERE p1.partytype = 1 AND p2.partytype = 2 \
+	LIMIT 20;
+
+mysql_test: ; $(mysql) -e "$(test-query)"
+
+psql_test: ; PGOPTIONS=--search_path=$(PGSCHEMA) $(psql) -c "$(test-query)"
+
+sqlite_test: ; $(sqlite) "$(test-query)"
 
 install: requirements.txt
 	pip install $(INSTALLFLAGS) --requirement=$<
