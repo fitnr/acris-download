@@ -21,7 +21,7 @@ services:
       dockerfile: mysql.dockerfile
     # ACRIS_DATASET: mysql, mysql_real_complete, mysql_personal, mysql_personal_complete, mysql_extras
     # See Makefile for latest MySQL options
-    command: ["wait", "${ACRIS_DATASET:-mysql}", "mysql_test"]
+    command: ["${ACRIS_DATASET:-mysql}"]
     working_dir: /app
     volumes:
       - type: bind

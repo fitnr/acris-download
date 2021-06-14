@@ -3,50 +3,21 @@ name: Docker compose tests
 on: [push]
 
 jobs:
-  test-mysql:
+  test:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-      packages: write
+    env:
+      COMPOSE_FILE: docker-compose.test.yml
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
 
-      - name: Copy test data to data directory
-        run: cp -r tests/data data
-
-      - name: Build the mysql image
+      - name: Build the images
         run: docker-compose build
-        env:
-          COMPOSE_FILE: docker-compose.mysql.yml
 
-      - name: Run the stack
-        run: docker-compose up --exit-code-from acris-mysql
-        env:
-          COMPOSE_FILE: docker-compose.mysql.yml
+      - name: Run mysql services
+        run: docker-compose run mysql --exit-code-from mysql
 
-  test-psql:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      packages: write
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
-
-      - name: Copy test data to data directory
-        run: cp -r tests/data data
-
-      - name: Build the postgresql image
-        run: docker-compose build
-        env:
-          COMPOSE_FILE: docker-compose.psql.yml
-
-      - name: Run the stack
-        run: docker-compose up --exit-code-from acris-psql
-        env:
-          COMPOSE_FILE: docker-compose.psql.yml
+      - name: Run psql services
+        run: docker-compose run psql --exit-code-from psql

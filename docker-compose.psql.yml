@@ -19,7 +19,7 @@ services:
       dockerfile: psql.dockerfile
     # ACRIS_DATASET: psql, psql_real_complete, psql_personal, psql_personal_complete, psql_extras
     # See Makefile for latest MySQL options
-    command: ["wait", "${ACRIS_DATASET:-psql}", "psql_test"]
+    command: ["${ACRIS_DATASET:-psql}"]
     working_dir: /app
     volumes:
       - type: bind
